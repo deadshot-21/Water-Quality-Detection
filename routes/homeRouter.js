@@ -6,6 +6,7 @@ const homeController = require('../controllers/homeController.js');
 router.get('/',homeController.index);
 router.get('/mapid',homeController.mapid);
 router.post('/getReflectance',homeController.getReflectance);
+router.post('/calculate',homeController.runCalculate);
 // router.get('/getUser', homeController.getUser);
 // router.post('/addCycle', homeController.addCycle);
 // router.post('/addStand', homeController.addStand);

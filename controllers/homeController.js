@@ -1,7 +1,8 @@
 const ee = require('@google/earthengine');
 const express = require('express');
 const privateKey = require('../.private-key.json');
-
+const wv = require('../wv_aw_bw.json');
+const wv_data = JSON.parse(wv);
 // Define endpoint at /mapid.
 // const app = express().get('/mapid', (_, response) => {
 //   const srtm = ee.Image('CGIAR/SRTM90_V4');
@@ -19,48 +20,94 @@ const u = (rrs) => {
   return (-g0 + (((g0^2 + 4*g1*rrs)^0.5) / (2*g1)))
 }
 
-const bbp = (W) => {
-  let e=exp(-0.9*rrs(R443)/rrs(R645));
+const bbp = (W, bbp_B0, R443, R550) => {
+  let B0 = 550;
+  let e=Math.exp(-0.9*rrs(R443)/rrs(R550));
   let g=2.0*(1-1.2*e);
   return bbp_B0*(B0/W)^g;
 }
 
-const a = (W,Rrs) => {
-  return (1-u(rrs(Rrs)))*(bw(W)+bbp(W))/u(rrs(Rrs));
+const a = (W, Rrs, bbp_B0, R443, R550) => {
+  return (1-u(rrs(Rrs)))*(bw(W)+bbp(W, bbp_B0, R443, R550))/u(rrs(Rrs));
 }
 
 const aw = (W) => {
-  return aw(W);
+  if(W == 443){
+    W = 440;
+  }
+  if(W == 412){
+    W = 410;
+  }
+  if(W == 443){
+    W = 440;
+  }
+  if(W == 645){
+    W = 640;
+  }
+  return wv_data[W]['aw'];
 }
 
 const bw = (W) => {
-  return bw(W);
+  if(W == 443){
+    W = 440;
+  }
+  if(W == 412){
+    W = 410;
+  }
+  if(W == 443){
+    W = 440;
+  }
+  if(W == 645){
+    W = 640;
+  }
+  return wv_data[W]['bw'];
 }
 
-const calculate = (R412,R443,R488,R555,R645,R667) => {
+
+
+const calculate = (R412,R443,R488,R550,R667) => {
+  console.log(R412,R443,R488,R550,R667);
+  let a_550 = 0;
    if(R667<0.0015){
     let p1 = rrs(R443) + rrs(R488);
-    let p2 = rrs(R645) + (5*(rrs(R667)/rrs(R488))*rrs(R667));
+    let p2 = rrs(R550) + (5*(rrs(R667)/rrs(R488))*rrs(R667));
     let x = log10(p1/p2);
     let h0 = -1.146;
     let h1 = -1.366;
     let h2 = -0.469;
-    let a_645 = aw(645)+(10^(h0+(h1*x)+(h2*(x^2))));
+     a_550 = aw(550)+(10^(h0+(h1*x)+(h2*(x^2))));
    }
    else{
-    let a_645=aw(645) + 0.39*(R645/(R443+R490))^1.14;
+     a_550=aw(550) + 0.39*(R550/(R443+R488))^1.14;
    }
-   let bbp_B0 = u(R645)*a_645/(1-u(R645) - bw(645));
+   let bbp_B0 = u(R550)*a_550/(1-u(R550) - bw(550));
    
   //  let bbp=bbp_B0*(B0/W)^g;
+   let S0 = 0.015;
+   let W = 443;
+   let R = R443;
+   let Zeta=0.74+0.2/(0.8+rrs(R443)/rrs(R550));
    
-   let Zeta=0.74+0.2/(0.8+rrs(R443)/rrs(R645));
-   let S=S0+0.002/(0.6+rrs(R443)/rrs(R645));
-   let Xi=exp(S*(443-411));
-   let adg443=((a(412,R412)-Zeta*a(443,R443))-(aw(412)-Zeta*aw(443)))/(Xi-Zeta);
-   let adg=adg443*exp(-S*(W-443));
-   let aph=a(W,R)-adg-aw(W);
+   let S=S0+0.002/(0.6+rrs(R443)/rrs(R550));
+   let Xi=Math.exp(S*(443-411));
+   let adg443=((a(412,R412, bbp_B0, R443, R550)-Zeta*a(443,R443, bbp_B0, R443, R550))-(aw(412)-Zeta*aw(443)))/(Xi-Zeta);
+   let adg=adg443*Math.exp((-S*(W-443)));
+   let aph=a(W,R, bbp_B0, R443, R550)-adg-aw(W);
+   console.log(Zeta, S, Xi, adg443, adg, aph);
    console.log(aph);
+}
+
+const runCalculate = async (req, res) => {
+  console.log(req.body);
+  const result = await calculate(parseInt(req.body.b8)*0.0001, parseInt(req.body.b9)*0.0001, parseInt(req.body.b10)*0.0001, parseInt(req.body.b12)*0.0001, parseInt(req.body.b13)*0.0001);
+  res.json({
+    status: true,
+    message: "Welcome to Tirtham",
+    errors: [],
+    data: {
+        result: result
+    },
+  })
 }
 
 const index = async (req, res) => {
@@ -264,5 +311,6 @@ const getReflectance = async (req, res) => {
 module.exports = {
     index,
     mapid,
-    getReflectance
+    getReflectance,
+    runCalculate
   };
