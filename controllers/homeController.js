@@ -17,13 +17,13 @@ const rrs = (R) => {
 const u = (rrs) => {
   let g0=0.089;
   let g1=0.1245;
-  return (-g0 + ((Math.pow((Math.pow(g0,2) + 4*g1*rrs),0.5)))) / (2*g1);
+  return (-g0 + Math.pow((Math.pow(g0,2) + (4*g1*rrs)),0.5)) / (2*g1);
 }
 
 const bbp = (W, bbp_B0, R443, R550) => {
   let B0 = 550;
   let e=Math.exp(-0.9*rrs(R443)/rrs(R550));
-  let g=2.0*(1-1.2*e);
+  let g=2.0*(1-(1.2*e));
   console.log('w',W);
   return bbp_B0*Math.pow((B0/W),g);
 }
@@ -72,20 +72,24 @@ const bw = (W) => {
 const calculate = (R412,R443,R488,R550,R667) => {
   // console.log(R412,R443,R488,R550,R667)
   let a_550 = 0;;
-   if(R667<0.0015){
-    let p1 = rrs(R443) + rrs(R488);
-    let p2 = rrs(R550) + (5*(rrs(R667)/rrs(R488))*rrs(R667));
-    let x = Math.log10(p1/p2);
-    let h0 = -1.146;
-    let h1 = -1.366;
-    let h2 = -0.469;
-     a_550 = aw(550)+(Math.pow(10,(h0+(h1*x)+(h2*(Math.pow(x,2))))));
-   }
-   else{
-     a_550=aw(550) + 0.39*Math.pow((R550/(R443+R488)),1.14);
-   }
+  //  if(R667<0.0015){
+  let p1 = rrs(R443) + rrs(R488);
+  let p2 = rrs(R550) + (5*(rrs(R667)/rrs(R488))*rrs(R667));
+  let x = Math.log10(p1/p2);
+  let h0 = -1.146;
+  let h1 = -1.366;
+  let h2 = -0.469;
+  a_550 = aw(550)+(Math.pow(10,(h0+(h1*x)+(h2*(Math.pow(x,2))))));
+  //  }
+  //  else{
+  //    a_550=aw(550) + 0.39*Math.pow((R550/(R443+R488)),1.14);
+  //  }
    console.log('a0', '550', a_550);
-   let bbp_B0 = u(rrs(R550))*a_550/(1-a_550) - bw(550);
+   console.log('u', u(rrs(R550)));
+
+  //  let bbp_B0 = u(rrs(R550))*a_550/(1-a_550) - bw(550);
+   let bbp_B0 = u(rrs(R550))*a_550/(1-u(rrs(R550))) - bw(550);
+   console.log('bb0', bbp_B0+bw(550));
    
   //  let bbp=bbp_B0*Math.pow((B0/W),g);
    let S0 = 0.015;
@@ -100,12 +104,14 @@ const calculate = (R412,R443,R488,R550,R667) => {
    let aph=a(W,R, bbp_B0, R443, R550)-adg-aw(W);
    console.log(Zeta, S, Xi, adg443, adg, aph);
    console.log(aph);
-   return aph
+   return Math.pow(aph/0.05,1/0.626);
 }
 
 const runCalculate = async (req, res) => {
   // console.log(req.body);
-  const result = await calculate(parseFloat(req.body.b8)*0.0001, parseFloat(req.body.b9)*0.0001, parseFloat(req.body.b10)*0.0001, parseFloat(req.body.b12)*0.0001, parseFloat(req.body.b13)*0.0001);
+  // const result = await calculate(parseFloat(req.body.b8)*0.0001, parseFloat(req.body.b9)*0.0001, parseFloat(req.body.b10)*0.0001, parseFloat(req.body.b12)*0.0001, parseFloat(req.body.b13)*0.0001);
+  const result = await calculate(parseFloat(req.body.b8)*1, parseFloat(req.body.b9)*1, parseFloat(req.body.b10)*1, parseFloat(req.body.b12)*1, parseFloat(req.body.b13)*1);
+
   res.json({
     status: true,
     message: "Welcome to Tirtham",
