@@ -78,7 +78,7 @@ const bw = (W) => {
 
 
 
-const calculate = (R412,R443,R488,R550,R667) => {
+const calculate = async (R412,R443,R488,R550,R667) => {
   // console.log(R412,R443,R488,R550,R667)
   let Rrs670_upper = (20.0 * Math.pow(R550, 1.5));
   let Rrs670_lower = (0.9 * Math.pow(R550, 1.7));
@@ -128,25 +128,52 @@ const calculate = (R412,R443,R488,R550,R667) => {
    console.log(aph);
   //  return Math.pow(aph/0.05,1/0.626);
   let options = {
-    mode: 'json',
+    mode: 'text',
     // pythonPath: 'path/to/python',
     pythonOptions: ['-u'], // get print results in real-time
     scriptPath: './controllers',
     args: [bw(W)+bbp(W, bbp_B0, R443, R550),W,R443,rrs(R443),a(440,R443, bbp_B0, R443, R550),aw(W),bw(W)]
   };
+  const { success, err='', results } = await new Promise(function(myResolve, myReject) {
+    // "Producing Code" (May take some time)
+    PythonShell.run('predict.py', options, function (err, results) {
+      if (err) {
+        myReject({ success: false, err });
+      }
+      // results is an array consisting of messages collected during execution
+      // console.log(results[2]);
+      // console.log(results);
+      // console.log(results[2].substring(2, results[2].length-2));
+      myResolve({ success: true, results: results[results.length-1].substring(2, results[results.length-1].length-2)}); // when successful
+    });
+    
+      // myReject();  // when error
+    });
+    
+    if (success)
+    {
+        return results;
+    } else {
+            console.log("Test Error: " + err);
+        return;
+    }
+    // }
+    // myPromise.then(
+    //   function(value) { /* code if successful */ 
+    //   return value;
+    // },
+    //   function(error) { /* code if some error */ 
+    //   return -1;
+    // }
+    // );
   
-  PythonShell.run('predict.py', options, function (err, results) {
-    if (err) throw err;
-    // results is an array consisting of messages collected during execution
-    console.log('results: %j', results);
-  });
 }
 
 const runCalculate = async (req, res) => {
   // console.log(req.body);
   // const result = await calculate(parseFloat(req.body.b8)*0.0001, parseFloat(req.body.b9)*0.0001, parseFloat(req.body.b10)*0.0001, parseFloat(req.body.b12)*0.0001, parseFloat(req.body.b13)*0.0001);
   const result = await calculate(parseFloat(req.body.b8)*1, parseFloat(req.body.b9)*1, parseFloat(req.body.b10)*1, parseFloat(req.body.b12)*1, parseFloat(req.body.b13)*1);
-
+  console.log('predicted value', result);
   res.json({
     status: true,
     message: "Welcome to Tirtham",
