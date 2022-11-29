@@ -3,6 +3,8 @@ const express = require('express');
 const privateKey = require('../.private-key.json');
 const wv = require('../wv_aw_bw.json');
 const wv_data = JSON.parse(wv);
+const {PythonShell} = require('python-shell')
+
 // Define endpoint at /mapid.
 // const app = express().get('/mapid', (_, response) => {
 //   const srtm = ee.Image('CGIAR/SRTM90_V4');
@@ -21,7 +23,8 @@ const u = (rrs) => {
 }
 
 const bbp = (W, bbp_B0, R443, R550) => {
-  let B0 = 550;
+  // let B0 = 550;
+  let B0 = 560;
   let e=Math.exp(-0.9*rrs(R443)/rrs(R550));
   let g=2.0*(1-(1.2*e));
   console.log('w',W);
@@ -29,21 +32,25 @@ const bbp = (W, bbp_B0, R443, R550) => {
 }
 
 const a = (W, Rrs, bbp_B0, R443, R550) => {
-  console.log('bb', W, bw(W)+bbp(W, bbp_B0, R443, R550));
+  const bb = bw(W)+bbp(W, bbp_B0, R443, R550);
+  console.log('bb', W, bb);
   console.log('bw', W, bw(W));
-  console.log('a', W, (1-u(rrs(Rrs)))*(bw(W)+bbp(W, bbp_B0, R443, R550))/u(rrs(Rrs)));
-  return (1-u(rrs(Rrs)))*(bw(W)+bbp(W, bbp_B0, R443, R550))/u(rrs(Rrs));
+  console.log('u', W, u(rrs(Rrs)));
+  console.log('a', W, (1-u(rrs(Rrs)))*(bb)/u(rrs(Rrs)));
+  return (1-u(rrs(Rrs)))*(bb)/u(rrs(Rrs));
 }
 
 const aw = (W) => {
   if(W == 443){
     W = 440;
+    return 0.00721;
   }
   if(W == 412){
     W = 410;
+    return 0.00469;
   }
-  if(W == 443){
-    W = 440;
+  if(W == 560){
+    return 0.0619;
   }
   if(W == 645){
     W = 640;
@@ -54,12 +61,14 @@ const aw = (W) => {
 const bw = (W) => {
   if(W == 443){
     W = 440;
+    return 0.0023885;
   }
   if(W == 412){
     W = 410;
+    return 0.003328;
   }
-  if(W == 443){
-    W = 440;
+  if(W == 560){
+    return 0.0008994;
   }
   if(W == 645){
     W = 640;
@@ -71,6 +80,16 @@ const bw = (W) => {
 
 const calculate = (R412,R443,R488,R550,R667) => {
   // console.log(R412,R443,R488,R550,R667)
+  let Rrs670_upper = (20.0 * Math.pow(R550, 1.5));
+  let Rrs670_lower = (0.9 * Math.pow(R550, 1.7));
+  // if Rrs[670] out of bounds, reassign its value by QAA v5.
+  if (R667 > Rrs670_upper || R667 < Rrs670_lower || R667 == NaN) {
+      let Rrs670 =  (0.00018 * Math.pow(R488 / R550, -3.19));
+      Rrs670 += (1.27 * Math.pow(R550, 1.47));
+      R667 = Rrs670;
+      console.log('1',R667);
+  }
+  console.log('2',R667);
   let a_550 = 0;;
   //  if(R667<0.0015){
   let p1 = rrs(R443) + rrs(R488);
@@ -79,32 +98,48 @@ const calculate = (R412,R443,R488,R550,R667) => {
   let h0 = -1.146;
   let h1 = -1.366;
   let h2 = -0.469;
-  a_550 = aw(550)+(Math.pow(10,(h0+(h1*x)+(h2*(Math.pow(x,2))))));
+  // a_550 = aw(550)+(Math.pow(10,(h0+(h1*x)+(h2*(Math.pow(x,2))))));
+  a_550 = aw(560)+(Math.pow(10,(h0+(h1*x)+(h2*(Math.pow(x,2))))));
   //  }
   //  else{
   //    a_550=aw(550) + 0.39*Math.pow((R550/(R443+R488)),1.14);
   //  }
-   console.log('a0', '550', a_550);
+   console.log('a0', '560', a_550);
    console.log('u', u(rrs(R550)));
 
   //  let bbp_B0 = u(rrs(R550))*a_550/(1-a_550) - bw(550);
-   let bbp_B0 = u(rrs(R550))*a_550/(1-u(rrs(R550))) - bw(550);
-   console.log('bb0', bbp_B0+bw(550));
+   let bbp_B0 = u(rrs(R550))*a_550/(1-u(rrs(R550))) - bw(560);
+   console.log('bb0', bbp_B0+bw(560));
    
   //  let bbp=bbp_B0*Math.pow((B0/W),g);
    let S0 = 0.015;
-   let W = 443;
+   let W = 440;
    let R = R443;
    let Zeta=0.74+0.2/(0.8+(rrs(R443)/rrs(R550)));
    
    let S=S0+0.002/(0.6+rrs(R443)/rrs(R550));
-   let Xi=Math.exp(S*(443-411));
-   let adg443=((a(412,R412, bbp_B0, R443, R550)-Zeta*a(443,R443, bbp_B0, R443, R550))-(aw(412)-Zeta*aw(443)))/(Xi-Zeta);
-   let adg=adg443*Math.exp((-S*(W-443)));
+   let Xi=Math.exp(S*(30));
+  //  let adg443=((a(412,R412, bbp_B0, R443, R550)-(Zeta*a(443,R443, bbp_B0, R443, R550)))-(aw(412)-(Zeta*aw(443))))/(Xi-Zeta);
+   let adg443=((a(410,R412, bbp_B0, R443, R550)-(Zeta*a(440,R443, bbp_B0, R443, R550)))-(aw(412)-(Zeta*aw(443))))/(Xi-Zeta);
+  //  let adg=adg443*Math.exp((-S*(W-443)));
+   let adg=adg443*Math.exp((-S*(W-440)));
    let aph=a(W,R, bbp_B0, R443, R550)-adg-aw(W);
    console.log(Zeta, S, Xi, adg443, adg, aph);
    console.log(aph);
-   return Math.pow(aph/0.05,1/0.626);
+  //  return Math.pow(aph/0.05,1/0.626);
+  let options = {
+    mode: 'json',
+    // pythonPath: 'path/to/python',
+    pythonOptions: ['-u'], // get print results in real-time
+    scriptPath: './controllers',
+    args: [bw(W)+bbp(W, bbp_B0, R443, R550),W,R443,rrs(R443),a(440,R443, bbp_B0, R443, R550),aw(W),bw(W)]
+  };
+  
+  PythonShell.run('predict.py', options, function (err, results) {
+    if (err) throw err;
+    // results is an array consisting of messages collected during execution
+    console.log('results: %j', results);
+  });
 }
 
 const runCalculate = async (req, res) => {
