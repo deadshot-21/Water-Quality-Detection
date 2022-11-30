@@ -497,7 +497,7 @@ const getReflectanceModis = async (req, res) => {
           message: "Welcome to Tirtham",
           errors: [],
           data: {
-              satellite_data: convert(result.limit(1)),
+              satellite_data: convert(result.limit(1)).features[0].properties,
               predicted_chl: result1[0],
               calculated_vars: result1[1]
           },
