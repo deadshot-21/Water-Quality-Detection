@@ -152,7 +152,9 @@ const calculate = async (R412,R443,R488,R550,R667) => {
     
     if (success)
     {
-        return results;
+        return [results, {
+          b443: bw(W) + bbp(W, bbp_B0, R443, R550), w: W, R443: R443, r443: rrs(R443), a443: a(440,R443, bbp_B0, R443, R550),aw443: aw(W), bw443: bw(W)
+        }];
     } else {
             console.log("Test Error: " + err);
         return;
@@ -179,7 +181,8 @@ const runCalculate = async (req, res) => {
     message: "Welcome to Tirtham",
     errors: [],
     data: {
-        result: result
+        predicted_chl: result[0],
+        calculated_vars: result[1]
     },
   })
 }
@@ -187,7 +190,7 @@ const runCalculate = async (req, res) => {
 const index = async (req, res) => {
     res.json({
         status: true,
-        message: "Welcome to Ecolyf",
+        message: "Welcome to Tirtham API",
         errors: [],
         data: {},
       });
@@ -214,7 +217,7 @@ const mapid = async (req, res) => {
       );
 }
 
-const getReflectance = async (req, res) => {
+const getReflectanceLandsat = async (req, res) => {
 
     console.log(req.body.lat);
     console.log(req.body.long);
@@ -382,9 +385,134 @@ const getReflectance = async (req, res) => {
     
 }
 
+const getReflectanceModis = async (req, res) => {
+
+  console.log(req.body.lat);
+  console.log(req.body.long);
+  function bufferPoints(radius, bounds) {
+    return function(pt) {
+      pt = ee.Feature(pt);
+      return bounds ? pt.buffer(radius).bounds() : pt.buffer(radius);
+    };
+  }
+  
+  async function zonalStats(ic, fc, params) {
+    // Initialize internal params dictionary.
+    var _params = {
+      reducer: ee.Reducer.mean(),
+      scale: null,
+      crs: null,
+      bands: null,
+      bandsRename: null,
+      imgProps: null,
+      imgPropsRename: null,
+      datetimeName: 'datetime',
+      datetimeFormat: 'YYYY-MM-dd HH:mm:ss'
+    };
+  
+    // Replace initialized params with provided params.
+    if (params) {
+      for (var param in params) {
+        _params[param] = params[param] || _params[param];
+      }
+    }
+  
+    // Set default parameters based on an image representative.
+    var imgRep = ic.first();
+    var nonSystemImgProps = ee.Feature(null)
+      .copyProperties(imgRep).propertyNames();
+    if (!_params.bands) _params.bands = imgRep.bandNames();
+    if (!_params.bandsRename) _params.bandsRename = _params.bands;
+    if (!_params.imgProps) _params.imgProps = nonSystemImgProps;
+    if (!_params.imgPropsRename) _params.imgPropsRename = _params.imgProps;
+  
+    // Map the reduceRegions function over the image collection.
+    var results = ic.map(function(img) {
+      // Select bands (optionally rename), set a datetime & timestamp property.
+      img = ee.Image(img.select(_params.bands, _params.bandsRename).divide(1e4))
+        .set(_params.datetimeName, img.date().format(_params.datetimeFormat))
+        .set('timestamp', img.get('system:time_start'));
+  
+      // Define final image property dictionary to set in output features.
+      var propsFrom = ee.List(_params.imgProps)
+        .cat(ee.List([_params.datetimeName, 'timestamp']));
+      var propsTo = ee.List(_params.imgPropsRename)
+        .cat(ee.List([_params.datetimeName, 'timestamp']));
+      // var imgProps = img.toDictionary(propsFrom).rename(propsFrom, propsTo);
+      var imgProps = img.toDictionary(propsFrom);
+  
+      // Subset points that intersect the given image.
+      var fcSub = fc.filterBounds(img.geometry());
+  
+      // Reduce the image by regions.
+      return img.reduceRegions({
+        collection: fcSub,
+        reducer: _params.reducer,
+        scale: _params.scale,
+        crs: _params.crs
+      })
+      // Add metadata to each feature.
+      .map(function(f) {
+        return f.set(imgProps);
+      });
+    }).flatten().filter(ee.Filter.notNull(_params.bandsRename));
+  
+    return results;
+  }
+  
+  var pts = ee.FeatureCollection([
+    ee.Feature(ee.Geometry.Point([req.body.lat, req.body.long]), {plot_id: 1}),
+    // ee.Feature(ee.Geometry.Point([-118.6010, 37.0777]), {plot_id: 1}),
+    // ee.Feature(ee.Geometry.Point([-118.5896, 37.0778]), {plot_id: 2}),
+    // ee.Feature(ee.Geometry.Point([-118.5842, 37.0805]), {plot_id: 3}),
+    // ee.Feature(ee.Geometry.Point([-118.5994, 37.0936]), {plot_id: 4}),
+    // ee.Feature(ee.Geometry.Point([-118.5861, 37.0567]), {plot_id: 5})
+  ]);
+  
+  var ptsModis = pts.map(bufferPoints(50, true));
+  
+  var modisCol = ee.ImageCollection('MODIS/006/MODOCGA')
+    .filterDate('2021-01-01', '2022-01-01');
+    
+  // Define parameters for the zonalStats function.
+  var params = {
+    reducer: ee.Reducer.median(),
+    scale: 500,
+    crs: 'EPSG:5070',
+    bands: ['sur_refl_b08', 'sur_refl_b09', 'sur_refl_b10', 'sur_refl_b12', 'sur_refl_b13'],
+    bandsRename: ['R412','R443', 'R488', 'R550', 'R667'],
+    datetimeName: 'date',
+    datetimeFormat: 'YYYY-MM-dd'
+  };
+  
+    // Extract zonal statistics per point per image.
+    var ptsModisStats = zonalStats(modisCol, ptsModis, params).then(async (result) => {
+      var data = convert(result.limit(1)).features[0].properties;
+      console.log(data);
+      const result1 = await calculate(parseFloat(data['R412'])*1, parseFloat(data['R443'])*1, parseFloat(data['R488'])*1, parseFloat(data['R550'])*1, parseFloat(data['R667'])*1);
+      console.log('predicted value', result1);
+      // console.log(R412);
+      res.json({
+          status: true,
+          message: "Welcome to Tirtham",
+          errors: [],
+          data: {
+              satellite_data: convert(result.limit(1)),
+              predicted_chl: result1[0],
+              calculated_vars: result1[1]
+          },
+        });
+    });
+    
+    
+  //   Map.centerObject(geometry,20)
+  
+}
+
 module.exports = {
     index,
     mapid,
-    getReflectance,
+    getReflectanceLandsat,
+    getReflectanceModis,
     runCalculate
   };

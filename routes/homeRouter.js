@@ -5,7 +5,8 @@ const homeController = require('../controllers/homeController.js');
 
 router.get('/',homeController.index);
 router.get('/mapid',homeController.mapid);
-router.post('/getReflectance',homeController.getReflectance);
+router.post('/getReflectanceL',homeController.getReflectanceLandsat);
+router.post('/getReflectanceM',homeController.getReflectanceModis);
 router.post('/calculate',homeController.runCalculate);
 // router.get('/getUser', homeController.getUser);
 // router.post('/addCycle', homeController.addCycle);
