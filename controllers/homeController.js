@@ -126,6 +126,7 @@ const calculate = async (R412,R443,R488,R550,R667) => {
    let aph=a(W,R, bbp_B0, R443, R550)-adg-aw(W);
    console.log(Zeta, S, Xi, adg443, adg, aph);
    console.log(aph);
+   console.log(rrs(R443));
   //  return Math.pow(aph/0.05,1/0.626);
   let options = {
     mode: 'text',
@@ -141,7 +142,8 @@ const calculate = async (R412,R443,R488,R550,R667) => {
         myReject({ success: false, err });
       }
       // results is an array consisting of messages collected during execution
-      // console.log(results[2]);
+      // console.log(err);
+      // console.log('results');
       // console.log(results);
       // console.log(results[2].substring(2, results[2].length-2));
       myResolve({ success: true, results: results[results.length-1].substring(2, results[results.length-1].length-2)}); // when successful
@@ -487,8 +489,10 @@ const getReflectanceModis = async (req, res) => {
   
     // Extract zonal statistics per point per image.
     var ptsModisStats = zonalStats(modisCol, ptsModis, params).then(async (result) => {
+      var data1 = convert(result);
       var data = convert(result.limit(1)).features[0].properties;
       console.log(data);
+      console.log(data1);
       const result1 = await calculate(parseFloat(data['R412'])*1, parseFloat(data['R443'])*1, parseFloat(data['R488'])*1, parseFloat(data['R550'])*1, parseFloat(data['R667'])*1);
       console.log('predicted value', result1);
       // console.log(R412);
