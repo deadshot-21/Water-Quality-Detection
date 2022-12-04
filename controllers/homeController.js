@@ -27,16 +27,16 @@ const bbp = (W, bbp_B0, R443, R550) => {
   let B0 = 560;
   let e=Math.exp(-0.9*rrs(R443)/rrs(R550));
   let g=2.0*(1-(1.2*e));
-  console.log('w',W);
+  // console.log('w',W);
   return bbp_B0*Math.pow((B0/W),g);
 }
 
 const a = (W, Rrs, bbp_B0, R443, R550) => {
   const bb = bw(W)+bbp(W, bbp_B0, R443, R550);
-  console.log('bb', W, bb);
-  console.log('bw', W, bw(W));
-  console.log('u', W, u(rrs(Rrs)));
-  console.log('a', W, (1-u(rrs(Rrs)))*(bb)/u(rrs(Rrs)));
+  // console.log('bb', W, bb);
+  // console.log('bw', W, bw(W));
+  // console.log('u', W, u(rrs(Rrs)));
+  // console.log('a', W, (1-u(rrs(Rrs)))*(bb)/u(rrs(Rrs)));
   return (1-u(rrs(Rrs)))*(bb)/u(rrs(Rrs));
 }
 
@@ -87,9 +87,9 @@ const calculate = async (R412,R443,R488,R550,R667) => {
       let Rrs670 =  (0.00018 * Math.pow(R488 / R550, -3.19));
       Rrs670 += (1.27 * Math.pow(R550, 1.47));
       R667 = Rrs670;
-      console.log('1',R667);
+      // console.log('1',R667);
   }
-  console.log('2',R667);
+  // console.log('2',R667);
   let a_550 = 0;;
   //  if(R667<0.0015){
   let p1 = rrs(R443) + rrs(R488);
@@ -104,12 +104,12 @@ const calculate = async (R412,R443,R488,R550,R667) => {
   //  else{
   //    a_550=aw(550) + 0.39*Math.pow((R550/(R443+R488)),1.14);
   //  }
-   console.log('a0', '560', a_550);
-   console.log('u', u(rrs(R550)));
+  //  console.log('a0', '560', a_550);
+  //  console.log('u', u(rrs(R550)));
 
   //  let bbp_B0 = u(rrs(R550))*a_550/(1-a_550) - bw(550);
    let bbp_B0 = u(rrs(R550))*a_550/(1-u(rrs(R550))) - bw(560);
-   console.log('bb0', bbp_B0+bw(560));
+  //  console.log('bb0', bbp_B0+bw(560));
    
   //  let bbp=bbp_B0*Math.pow((B0/W),g);
    let S0 = 0.015;
@@ -124,9 +124,9 @@ const calculate = async (R412,R443,R488,R550,R667) => {
   //  let adg=adg443*Math.exp((-S*(W-443)));
    let adg=adg443*Math.exp((-S*(W-440)));
    let aph=a(W,R, bbp_B0, R443, R550)-adg-aw(W);
-   console.log(Zeta, S, Xi, adg443, adg, aph);
-   console.log(aph);
-   console.log(rrs(R443));
+  //  console.log(Zeta, S, Xi, adg443, adg, aph);
+  //  console.log(aph);
+  //  console.log(rrs(R443));
   //  return Math.pow(aph/0.05,1/0.626);
   let options = {
     mode: 'text',
@@ -177,7 +177,7 @@ const runCalculate = async (req, res) => {
   // console.log(req.body);
   // const result = await calculate(parseFloat(req.body.b8)*0.0001, parseFloat(req.body.b9)*0.0001, parseFloat(req.body.b10)*0.0001, parseFloat(req.body.b12)*0.0001, parseFloat(req.body.b13)*0.0001);
   const result = await calculate(parseFloat(req.body.b8)*1, parseFloat(req.body.b9)*1, parseFloat(req.body.b10)*1, parseFloat(req.body.b12)*1, parseFloat(req.body.b13)*1);
-  console.log('predicted value', result);
+  // console.log('predicted value', result);
   res.json({
     status: true,
     message: "Welcome to Tirtham",
@@ -489,10 +489,12 @@ const getReflectanceModis = async (req, res) => {
   
     // Extract zonal statistics per point per image.
     var ptsModisStats = zonalStats(modisCol, ptsModis, params).then(async (result) => {
-      var data1 = convert(result);
-      var data = convert(result.limit(1)).features[0].properties;
+      var data1 = convert(result).features;
+      var data1 = Array.from(data1);
+      // var data = convert(result.limit(1)).features[0].properties;
+      var data = data1[data1.length - 1].properties;
       console.log(data);
-      console.log(data1);
+      console.log(data1[data1.length - 1]);
       const result1 = await calculate(parseFloat(data['R412'])*1, parseFloat(data['R443'])*1, parseFloat(data['R488'])*1, parseFloat(data['R550'])*1, parseFloat(data['R667'])*1);
       console.log('predicted value', result1);
       // console.log(R412);
