@@ -1,9 +1,9 @@
-const ee = require('@google/earthengine');
-const express = require('express');
-const privateKey = require('../.private-key.json');
-const wv = require('../wv_aw_bw.json');
+const ee = require("@google/earthengine");
+const express = require("express");
+const privateKey = require("../.private-key.json");
+const wv = require("../wv_aw_bw.json");
 const wv_data = JSON.parse(wv);
-const {PythonShell} = require('python-shell')
+const { PythonShell } = require("python-shell");
 
 // Define endpoint at /mapid.
 // const app = express().get('/mapid', (_, response) => {
@@ -13,93 +13,91 @@ const {PythonShell} = require('python-shell')
 // });
 
 const rrs = (R) => {
-  return R/(0.52+(1.7*R))
-}
+  return R / (0.52 + 1.7 * R);
+};
 
 const u = (rrs) => {
-  let g0=0.089;
-  let g1=0.1245;
-  return (-g0 + Math.pow((Math.pow(g0,2) + (4*g1*rrs)),0.5)) / (2*g1);
-}
+  let g0 = 0.089;
+  let g1 = 0.1245;
+  return (-g0 + Math.pow(Math.pow(g0, 2) + 4 * g1 * rrs, 0.5)) / (2 * g1);
+};
 
 const bbp = (W, bbp_B0, R443, R550) => {
   // let B0 = 550;
   let B0 = 560;
-  let e=Math.exp(-0.9*rrs(R443)/rrs(R550));
-  let g=2.0*(1-(1.2*e));
+  let e = Math.exp((-0.9 * rrs(R443)) / rrs(R550));
+  let g = 2.0 * (1 - 1.2 * e);
   // console.log('w',W);
-  return bbp_B0*Math.pow((B0/W),g);
-}
+  return bbp_B0 * Math.pow(B0 / W, g);
+};
 
 const a = (W, Rrs, bbp_B0, R443, R550) => {
-  const bb = bw(W)+bbp(W, bbp_B0, R443, R550);
+  const bb = bw(W) + bbp(W, bbp_B0, R443, R550);
   // console.log('bb', W, bb);
   // console.log('bw', W, bw(W));
   // console.log('u', W, u(rrs(Rrs)));
   // console.log('a', W, (1-u(rrs(Rrs)))*(bb)/u(rrs(Rrs)));
-  return (1-u(rrs(Rrs)))*(bb)/u(rrs(Rrs));
-}
+  return ((1 - u(rrs(Rrs))) * bb) / u(rrs(Rrs));
+};
 
 const aw = (W) => {
-  if(W == 443){
+  if (W == 443) {
     W = 440;
     return 0.00721;
   }
-  if(W == 412){
+  if (W == 412) {
     W = 410;
     return 0.00469;
   }
-  if(W == 560){
+  if (W == 560) {
     return 0.0619;
   }
-  if(W == 645){
+  if (W == 645) {
     W = 640;
   }
-  return wv_data[W]['aw'];
-}
+  return wv_data[W]["aw"];
+};
 
 const bw = (W) => {
-  if(W == 443){
+  if (W == 443) {
     W = 440;
     return 0.0023885;
   }
-  if(W == 412){
+  if (W == 412) {
     W = 410;
     return 0.003328;
   }
-  if(W == 560){
+  if (W == 560) {
     return 0.0008994;
   }
-  if(W == 645){
+  if (W == 645) {
     W = 640;
   }
-  return wv_data[W]['bw'];
-}
+  return wv_data[W]["bw"];
+};
 
-
-
-const calculate = async (R412,R443,R488,R550,R667) => {
+const calculate = async (R412, R443, R488, R550, R667) => {
   // console.log(R412,R443,R488,R550,R667)
-  let Rrs670_upper = (20.0 * Math.pow(R550, 1.5));
-  let Rrs670_lower = (0.9 * Math.pow(R550, 1.7));
+  let Rrs670_upper = 20.0 * Math.pow(R550, 1.5);
+  let Rrs670_lower = 0.9 * Math.pow(R550, 1.7);
   // if Rrs[670] out of bounds, reassign its value by QAA v5.
   if (R667 > Rrs670_upper || R667 < Rrs670_lower || R667 == NaN) {
-      let Rrs670 =  (0.00018 * Math.pow(R488 / R550, -3.19));
-      Rrs670 += (1.27 * Math.pow(R550, 1.47));
-      R667 = Rrs670;
-      // console.log('1',R667);
+    let Rrs670 = 0.00018 * Math.pow(R488 / R550, -3.19);
+    Rrs670 += 1.27 * Math.pow(R550, 1.47);
+    R667 = Rrs670;
+    // console.log('1',R667);
   }
   // console.log('2',R667);
-  let a_550 = 0;;
+  let a_550 = 0;
   //  if(R667<0.0015){
   let p1 = rrs(R443) + rrs(R488);
-  let p2 = rrs(R550) + (5*(rrs(R667)/rrs(R488))*rrs(R667));
-  let x = Math.log10(p1/p2);
+  let p2 = rrs(R550) + 5 * (rrs(R667) / rrs(R488)) * rrs(R667);
+  let x = Math.log10(p1 / p2);
   let h0 = -1.146;
   let h1 = -1.366;
   let h2 = -0.469;
   // a_550 = aw(550)+(Math.pow(10,(h0+(h1*x)+(h2*(Math.pow(x,2))))));
-  a_550 = aw(560)+(Math.pow(10,(h0+(h1*x)+(h2*(Math.pow(x,2))))));
+  a_550 = aw(560) + Math.pow(10, h0 + h1 * x + h2 * Math.pow(x, 2));
   //  }
   //  else{
   //    a_550=aw(550) + 0.39*Math.pow((R550/(R443+R488)),1.14);
@@ -108,296 +106,437 @@ const calculate = async (R412,R443,R488,R550,R667) => {
   //  console.log('u', u(rrs(R550)));
 
   //  let bbp_B0 = u(rrs(R550))*a_550/(1-a_550) - bw(550);
-   let bbp_B0 = u(rrs(R550))*a_550/(1-u(rrs(R550))) - bw(560);
+  let bbp_B0 = (u(rrs(R550)) * a_550) / (1 - u(rrs(R550))) - bw(560);
   //  console.log('bb0', bbp_B0+bw(560));
-   
+
   //  let bbp=bbp_B0*Math.pow((B0/W),g);
-   let S0 = 0.015;
-   let W = 440;
-   let R = R443;
-   let Zeta=0.74+0.2/(0.8+(rrs(R443)/rrs(R550)));
-   
-   let S=S0+0.002/(0.6+rrs(R443)/rrs(R550));
-   let Xi=Math.exp(S*(30));
+  let S0 = 0.015;
+  let W = 440;
+  let R = R443;
+  let Zeta = 0.74 + 0.2 / (0.8 + rrs(R443) / rrs(R550));
+
+  let S = S0 + 0.002 / (0.6 + rrs(R443) / rrs(R550));
+  let Xi = Math.exp(S * 30);
   //  let adg443=((a(412,R412, bbp_B0, R443, R550)-(Zeta*a(443,R443, bbp_B0, R443, R550)))-(aw(412)-(Zeta*aw(443))))/(Xi-Zeta);
-   let adg443=((a(410,R412, bbp_B0, R443, R550)-(Zeta*a(440,R443, bbp_B0, R443, R550)))-(aw(412)-(Zeta*aw(443))))/(Xi-Zeta);
+  let adg443 =
+    (a(410, R412, bbp_B0, R443, R550) -
+      Zeta * a(440, R443, bbp_B0, R443, R550) -
+      (aw(412) - Zeta * aw(443))) /
+    (Xi - Zeta);
   //  let adg=adg443*Math.exp((-S*(W-443)));
-   let adg=adg443*Math.exp((-S*(W-440)));
-   let aph=a(W,R, bbp_B0, R443, R550)-adg-aw(W);
+  let adg = adg443 * Math.exp(-S * (W - 440));
+  let aph = a(W, R, bbp_B0, R443, R550) - adg - aw(W);
   //  console.log(Zeta, S, Xi, adg443, adg, aph);
   //  console.log(aph);
   //  console.log(rrs(R443));
   //  return Math.pow(aph/0.05,1/0.626);
-  let options = {
-    mode: 'text',
-    // pythonPath: 'path/to/python',
-    pythonOptions: ['-u'], // get print results in real-time
-    scriptPath: './controllers',
-    args: [bw(W)+bbp(W, bbp_B0, R443, R550),W,R443,rrs(R443),a(440,R443, bbp_B0, R443, R550),aw(W),bw(W)]
-  };
-  const { success, err='', results } = await new Promise(function(myResolve, myReject) {
-    // "Producing Code" (May take some time)
-    PythonShell.run('predict.py', options, function (err, results) {
-      if (err) {
-        myReject({ success: false, err });
-      }
-      // results is an array consisting of messages collected during execution
-      // console.log(err);
-      // console.log('results');
-      // console.log(results);
-      // console.log(results[2].substring(2, results[2].length-2));
-      myResolve({ success: true, results: results[results.length-1].substring(2, results[results.length-1].length-2)}); // when successful
-    });
-    
-      // myReject();  // when error
-    });
-    
-    if (success)
-    {
-        return [results, {
-          b443: bw(W) + bbp(W, bbp_B0, R443, R550), w: W, R443: R443, r443: rrs(R443), a443: a(440,R443, bbp_B0, R443, R550),aw443: aw(W), bw443: bw(W)
-        }];
-    } else {
-            console.log("Test Error: " + err);
-        return;
-    }
-    // }
-    // myPromise.then(
-    //   function(value) { /* code if successful */ 
-    //   return value;
-    // },
-    //   function(error) { /* code if some error */ 
-    //   return -1;
-    // }
-    // );
-  
-}
+  // let options = {
+  //   mode: 'text',
+  //   // pythonPath: 'path/to/python',
+  //   pythonOptions: ['-u'], // get print results in real-time
+  //   scriptPath: './controllers',
+  //   args: [bw(W)+bbp(W, bbp_B0, R443, R550),W,R443,rrs(R443),a(440,R443, bbp_B0, R443, R550),aw(W),bw(W)]
+  // };
+  // const { success, err='', results } = await new Promise(function(myResolve, myReject) {
+  //   // "Producing Code" (May take some time)
+  //   PythonShell.run('predict.py', options, function (err, results) {
+  //     if (err) {
+  //       myReject({ success: false, err });
+  //     }
+  //     // results is an array consisting of messages collected during execution
+  //     // console.log(err);
+  //     // console.log('results');
+  //     // console.log(results);
+  //     // console.log(results[2].substring(2, results[2].length-2));
+  //     myResolve({ success: true, results: results[results.length-1].substring(2, results[results.length-1].length-2)}); // when successful
+  //   });
+
+  //     // myReject();  // when error
+  //   });
+
+  //   if (success)
+  //   {
+  //       return [results, {
+  //         b443: bw(W) + bbp(W, bbp_B0, R443, R550), w: W, R443: R443, r443: rrs(R443), a443: a(440,R443, bbp_B0, R443, R550),aw443: aw(W), bw443: bw(W)
+  //       }];
+  //   } else {
+  //           console.log("Test Error: " + err);
+  //       return;
+  //   }
+  // }
+  // myPromise.then(
+  //   function(value) { /* code if successful */
+  //   return value;
+  // },
+  //   function(error) { /* code if some error */
+  //   return -1;
+  // }
+  // );
+  console.log('calculate: '+[
+    bw(W) + bbp(W, bbp_B0, R443, R550),
+    W,
+    R443,
+    rrs(R443),
+    a(440, R443, bbp_B0, R443, R550),
+    aw(W),
+    bw(W),
+  ]);
+  console.log("IMPORTANT");
+  let a_coeff = [0.26294, -2.64669, 1.28364, 1.08209, -1.76828];
+  let latter = 0;
+  for (let index = 1; index <= 4; index++) {
+    latter += a_coeff[index]*(Math.pow(Math.log10(R443/R550),index));
+  }	
+  let chl_a = Math.pow(10,a_coeff[0] + latter);
+  console.log("CHLOROPHYLL  "+chl_a);
+  return [
+    bw(W) + bbp(W, bbp_B0, R443, R550),
+    W,
+    R443,
+    rrs(R443),
+    a(440, R443, bbp_B0, R443, R550),
+    aw(W),
+    bw(W),
+  ];
+};
 
 const runCalculate = async (req, res) => {
   // console.log(req.body);
   // const result = await calculate(parseFloat(req.body.b8)*0.0001, parseFloat(req.body.b9)*0.0001, parseFloat(req.body.b10)*0.0001, parseFloat(req.body.b12)*0.0001, parseFloat(req.body.b13)*0.0001);
-  const result = await calculate(parseFloat(req.body.b8)*1, parseFloat(req.body.b9)*1, parseFloat(req.body.b10)*1, parseFloat(req.body.b12)*1, parseFloat(req.body.b13)*1);
+  const result = await calculate(
+    parseFloat(req.body.b8) * 1,
+    parseFloat(req.body.b9) * 1,
+    parseFloat(req.body.b10) * 1,
+    parseFloat(req.body.b12) * 1,
+    parseFloat(req.body.b13) * 1
+  );
   // console.log('predicted value', result);
   res.json({
     status: true,
     message: "Welcome to Tirtham",
     errors: [],
     data: {
-        predicted_chl: result[0],
-        calculated_vars: result[1]
+      predicted_chl: result[0],
+      calculated_vars: result[1],
     },
-  })
-}
+  });
+};
 
 const index = async (req, res) => {
-    res.json({
-        status: true,
-        message: "Welcome to Tirtham API",
-        errors: [],
-        data: {},
-      });
-}
+  res.json({
+    status: true,
+    message: "Welcome to Tirtham API",
+    errors: [],
+    data: {},
+  });
+};
 var convert = function (o) {
-    if (o instanceof ee.ComputedObject) {
-      o = o.getInfo();
-    }
-    return o;
-  };
+  if (o instanceof ee.ComputedObject) {
+    o = o.getInfo();
+  }
+  return o;
+};
 
 const mapid = async (req, res) => {
-    const srtm = ee.ImageCollection("MODIS/006/MCD43A4");
-    const slope = ee.Terrain.slope(srtm);
-    slope.getMap({min: 0, max: 60}, ({mapid}) => 
+  const srtm = ee.ImageCollection("MODIS/006/MCD43A4");
+  const slope = ee.Terrain.slope(srtm);
+  slope.getMap({ min: 0, max: 60 }, ({ mapid }) =>
     res.json({
-        status: true,
-        message: "Welcome to Tirtham",
-        errors: [],
-        data: {
-            mapid: mapid
-        },
-      })
-      );
-}
+      status: true,
+      message: "Welcome to Tirtham",
+      errors: [],
+      data: {
+        mapid: mapid,
+      },
+    })
+  );
+};
 
 const getReflectanceLandsat = async (req, res) => {
-
-    console.log(req.body.lat);
-    console.log(req.body.long);
-    function bufferPoints(radius, bounds) {
-        return function(pt) {
-          pt = ee.Feature(pt);
-          return bounds ? pt.buffer(radius).bounds() : pt.buffer(radius);
-        };
-      }
-      
-      const zonalStats = async (ic, fc, params) => {
-        // Initialize internal params dictionary.
-        var _params = {
-          reducer: ee.Reducer.mean(),
-          scale: null,
-          crs: null,
-          bands: null,
-          bandsRename: null,
-          imgProps: null,
-          imgPropsRename: null,
-          datetimeName: 'datetime',
-          datetimeFormat: 'YYYY-MM-dd HH:mm:ss'
-        };
-      
-        // Replace initialized params with provided params.
-        if (params) {
-          for (var param in params) {
-            _params[param] = params[param] || _params[param];
-          }
-        }
-      
-        // Set default parameters based on an image representative.
-        var imgRep = ic.first();
-        // console.log(convert(imgRep));
-        var nonSystemImgProps = ee.Feature(null)
-          .copyProperties(imgRep).propertyNames();
-        if (!_params.bands) _params.bands = imgRep.bandNames();
-        if (!_params.bandsRename) _params.bandsRename = _params.bands;
-        if (!_params.imgProps) _params.imgProps = nonSystemImgProps;
-        if (!_params.imgPropsRename) _params.imgPropsRename = _params.imgProps;
-      
-        // Map the reduceRegions function over the image collection.
-        var results = await ic.map(function(img) {
-          // Select bands (optionally rename), set a datetime & timestamp property.
-          img = ee.Image(img.select(_params.bands, _params.bandsRename).divide(3.6e6))
-            .set(_params.datetimeName, img.date().format(_params.datetimeFormat))
-            .set('timestamp', img.get('system:time_start'));
-      
-          // Define final image property dictionary to set in output features.
-          var propsFrom = ee.List(_params.imgProps)
-            .cat(ee.List([_params.datetimeName, 'timestamp']));
-          var propsTo = ee.List(_params.imgPropsRename)
-            .cat(ee.List([_params.datetimeName, 'timestamp']));
-          // var imgProps = img.toDictionary(propsFrom).rename(propsFrom, propsTo);
-          var imgProps = img.toDictionary(propsFrom);
-      
-          // Subset points that intersect the given image.
-          var fcSub = fc.filterBounds(img.geometry());
-      
-          // Reduce the image by regions.
-          return img.reduceRegions({
-            collection: fcSub,
-            reducer: _params.reducer,
-            scale: _params.scale,
-            crs: _params.crs
-          })
-          // Add metadata to each feature.
-          .map(function(f) {
-            return f.set(imgProps);
-          });
-        }).flatten().filter(ee.Filter.notNull(_params.bandsRename));
-        
-        // console.log(results);
-        return results;
-      }
-      
-      var pts = ee.FeatureCollection([
-        ee.Feature(ee.Geometry.Point([req.body.lat, req.body.long]), {plot_id: 1}),
-        // ee.Feature(ee.Geometry.Point([-118.5896, 37.0778]), {plot_id: 2}),
-        // ee.Feature(ee.Geometry.Point([-118.5842, 37.0805]), {plot_id: 3}),
-        // ee.Feature(ee.Geometry.Point([-118.5994, 37.0936]), {plot_id: 4}),
-        // ee.Feature(ee.Geometry.Point([-118.5861, 37.0567]), {plot_id: 5})
-      ]);
-      
-      function fmask(img) {
-        var cloudShadowBitMask = 1 << 3;
-        var cloudsBitMask = 1 << 5;
-        var qa = img.select('QA_PIXEL');
-        var mask = qa.bitwiseAnd(cloudShadowBitMask).eq(0)
-          .and(qa.bitwiseAnd(cloudsBitMask).eq(0));
-        return img.updateMask(mask);
-      }
-      
-      function renameOli(img) {
-        return img.select(
-          ['SR_B2', 'SR_B3', 'SR_B4', 'SR_B5', 'SR_B6', 'SR_B7'],
-          ['Blue', 'Green', 'Red', 'NIR', 'SWIR1', 'SWIR2']);
-      }
-      
-      // Selects and renames bands of interest for TM/ETM+.
-      function renameEtm(img) {
-        return img.select(
-          ['B1', 'B2', 'B3', 'B4', 'B5', 'B7'],
-          ['Blue', 'Green', 'Red', 'NIR', 'SWIR1', 'SWIR2']);
-      }
-      
-      // Prepares (cloud masks and renames) OLI images.
-      function prepOli(img) {
-        // img = fmask(img);
-        // img = renameOli(img);
-        return img;
-      }
-      
-      // Prepares (cloud masks and renames) TM/ETM+ images.
-      function prepEtm(img) {
-        // img = fmask(img);
-        // img = renameEtm(img);
-        return img;
-      }
-      
-      var ptsLandsat = pts.map(bufferPoints(15, true));
-      
-      var oliCol = ee.ImageCollection('LANDSAT/LC08/C02/T1_L2')
-        .filterBounds(ptsLandsat);
-        // .map(prepOli);
-      // console.log(convert(oliCol));
-      // var etmCol = ee.ImageCollection('LANDSAT/LE07/C01/T1_SR')
-      //   .filterBounds(ptsLandsat)
-      //   .map(prepEtm);
-      
-      // var tmCol = ee.ImageCollection('LANDSAT/LT05/C01/T1_SR')
-      //   .filterBounds(ptsLandsat)
-      //   .map(prepEtm);
-        
-      // var landsatCol = oliCol.merge(etmCol).merge(tmCol);
-      
-      var params = {
-        reducer: ee.Reducer.mean(),
-        scale: 30,
-        crs: 'EPSG:5070',
-        // bands: ['Blue', 'Green', 'Red', 'NIR', 'SWIR1', 'SWIR2'],
-        bands: ['SR_B2', 'SR_B3', 'SR_B4'],
-        bandsRename: ['ls_blue', 'ls_green', 'ls_red'],
-        // imgProps: ['LANDSAT_ID', 'SATELLITE'],
-        // imgPropsRename: ['img_id', 'satellite'],
-        datetimeName: 'date',
-        datetimeFormat: 'YYYY-MM-dd'
-      };
-      
-      // Extract zonal statistics per point per image.
-      var ptsLandsatStats = zonalStats(oliCol, ptsLandsat, params).then((result) => {
-        console.log(convert(result.limit(1)).features[0].properties);
-        res.json({
-            status: true,
-            message: "Welcome to Tirtham",
-            errors: [],
-            data: {
-                data: convert(result.limit(1))
-            },
-          });
-      });
-      
-      
-    //   Map.centerObject(geometry,20)
-    
-}
-
-const getReflectanceModis = async (req, res) => {
-
   console.log(req.body.lat);
   console.log(req.body.long);
   function bufferPoints(radius, bounds) {
-    return function(pt) {
+    return function (pt) {
       pt = ee.Feature(pt);
       return bounds ? pt.buffer(radius).bounds() : pt.buffer(radius);
     };
   }
-  
+
+  const zonalStats = async (ic, fc, params) => {
+    // Initialize internal params dictionary.
+    var _params = {
+      reducer: ee.Reducer.mean(),
+      scale: null,
+      crs: null,
+      bands: null,
+      bandsRename: null,
+      imgProps: null,
+      imgPropsRename: null,
+      datetimeName: "datetime",
+      datetimeFormat: "YYYY-MM-dd HH:mm:ss",
+    };
+
+    // Replace initialized params with provided params.
+    if (params) {
+      for (var param in params) {
+        _params[param] = params[param] || _params[param];
+      }
+    }
+
+    // Set default parameters based on an image representative.
+    var imgRep = ic.first();
+    // console.log(convert(imgRep));
+    var nonSystemImgProps = ee
+      .Feature(null)
+      .copyProperties(imgRep)
+      .propertyNames();
+    if (!_params.bands) _params.bands = imgRep.bandNames();
+    if (!_params.bandsRename) _params.bandsRename = _params.bands;
+    if (!_params.imgProps) _params.imgProps = nonSystemImgProps;
+    if (!_params.imgPropsRename) _params.imgPropsRename = _params.imgProps;
+
+    // Map the reduceRegions function over the image collection.
+    var results = await ic
+      .map(function (img) {
+        // Select bands (optionally rename), set a datetime & timestamp property.
+        img = ee
+          .Image(img.select(_params.bands, _params.bandsRename).divide(3.6e6))
+          .set(_params.datetimeName, img.date().format(_params.datetimeFormat))
+          .set("timestamp", img.get("system:time_start"));
+
+        // Define final image property dictionary to set in output features.
+        var propsFrom = ee
+          .List(_params.imgProps)
+          .cat(ee.List([_params.datetimeName, "timestamp"]));
+        var propsTo = ee
+          .List(_params.imgPropsRename)
+          .cat(ee.List([_params.datetimeName, "timestamp"]));
+        // var imgProps = img.toDictionary(propsFrom).rename(propsFrom, propsTo);
+        var imgProps = img.toDictionary(propsFrom);
+
+        // Subset points that intersect the given image.
+        var fcSub = fc.filterBounds(img.geometry());
+
+        // Reduce the image by regions.
+        return (
+          img
+            .reduceRegions({
+              collection: fcSub,
+              reducer: _params.reducer,
+              scale: _params.scale,
+              crs: _params.crs,
+            })
+            // Add metadata to each feature.
+            .map(function (f) {
+              return f.set(imgProps);
+            })
+        );
+      })
+      .flatten()
+      .filter(ee.Filter.notNull(_params.bandsRename));
+
+    // console.log(results);
+    return results;
+  };
+
+  var pts = ee.FeatureCollection([
+    ee.Feature(ee.Geometry.Point([req.body.long,req.body.lat]), {
+      plot_id: 1,
+    }),
+    ee.Feature(ee.Geometry.Point([req.body.long-0.02, req.body.lat-0.0002]), {plot_id: 2}),
+    ee.Feature(ee.Geometry.Point([req.body.long+0.02, req.body.lat+0.0002]), {plot_id: 3}),
+    ee.Feature(ee.Geometry.Point([req.body.long-0.02, req.body.lat+0.0002]), {plot_id: 4}),
+    ee.Feature(ee.Geometry.Point([req.body.long+0.02, req.body.lat-0.0002]), {plot_id: 5})
+  ]);
+
+  function fmask(img) {
+    var cloudShadowBitMask = 1 << 3;
+    var cloudsBitMask = 1 << 5;
+    var qa = img.select("QA_PIXEL");
+    var mask = qa
+      .bitwiseAnd(cloudShadowBitMask)
+      .eq(0)
+      .and(qa.bitwiseAnd(cloudsBitMask).eq(0));
+    return img.updateMask(mask);
+  }
+
+  function renameOli(img) {
+    return img.select(
+      ["SR_B2", "SR_B3", "SR_B4", "SR_B5", "SR_B6", "SR_B7"],
+      ["Blue", "Green", "Red", "NIR", "SWIR1", "SWIR2"]
+    );
+  }
+
+  // Selects and renames bands of interest for TM/ETM+.
+  function renameEtm(img) {
+    return img.select(
+      ["B1", "B2", "B3", "B4", "B5", "B7"],
+      ["Blue", "Green", "Red", "NIR", "SWIR1", "SWIR2"]
+    );
+  }
+
+  // Prepares (cloud masks and renames) OLI images.
+  function prepOli(img) {
+    // img = fmask(img);
+    // img = renameOli(img);
+    return img;
+  }
+
+  // Prepares (cloud masks and renames) TM/ETM+ images.
+  function prepEtm(img) {
+    // img = fmask(img);
+    // img = renameEtm(img);
+    return img;
+  }
+
+  var ptsLandsat = pts.map(bufferPoints(15, true));
+
+  var oliCol = ee
+    .ImageCollection("LANDSAT/LC08/C02/T1_L2")
+    .filterBounds(ptsLandsat);
+  // .map(prepOli);
+  // console.log(convert(oliCol));
+  // var etmCol = ee.ImageCollection('LANDSAT/LE07/C01/T1_SR')
+  //   .filterBounds(ptsLandsat)
+  //   .map(prepEtm);
+
+  // var tmCol = ee.ImageCollection('LANDSAT/LT05/C01/T1_SR')
+  //   .filterBounds(ptsLandsat)
+  //   .map(prepEtm);
+
+  // var landsatCol = oliCol.merge(etmCol).merge(tmCol);
+
+  var params = {
+    reducer: ee.Reducer.mean(),
+    scale: 30,
+    crs: "EPSG:5070",
+    // bands: ['Blue', 'Green', 'Red', 'NIR', 'SWIR1', 'SWIR2'],
+    bands: ["SR_B1", "SR_B2", "SR_B3", "SR_B4"],
+    // bandsRename: ["ls_blue", "ls_green", "ls_red"],
+    bandsRename: ["R443", "R488", "R550", "R667"],
+    // imgProps: ['LANDSAT_ID', 'SATELLITE'],
+    // imgPropsRename: ['img_id', 'satellite'],
+    datetimeName: "date",
+    datetimeFormat: "YYYY-MM-dd",
+  };
+
+  // Extract zonal statistics per point per image.
+  var ptsLandsatStats = zonalStats(oliCol, ptsLandsat, params).then(
+    async (result) => {
+      console.log(convert(result.limit(1)));
+      var data1 = convert(result).features;
+      var data1 = Array.from(data1);
+
+      
+      const data = data1[data1.length - 1].properties;
+      // res.json({
+      //   status: true,
+      //   message: "Welcome to Tirtham",
+      //   errors: [],
+      //   data: {
+      //     data: convert(result.limit(1)),
+      //   },
+      // });
+      var res_array = [];
+      for (let index = 1; index < 6; index++) {
+        var datum = data1[data1.length - index].properties;
+        console.log(datum);
+        var element = await calculate(
+          parseFloat(datum["R443"]) * 1,
+          parseFloat(datum["R443"]) * 1,
+          parseFloat(datum["R488"]) * 1,
+          parseFloat(datum["R550"]) * 1,
+          parseFloat(datum["R667"]) * 1
+        );
+        res_array.push(element);
+      }
+      console.log(res_array);
+      let options = {
+        mode: "text",
+        // pythonPath: 'path/to/python',
+        pythonOptions: ["-u"], // get print results in real-time
+        scriptPath: "./controllers",
+        args: res_array,
+      };
+      // console.log(options);
+      const {
+        success,
+        err = "",
+        results,
+      } = await new Promise(function (myResolve, myReject) {
+        // "Producing Code" (May take some time)
+        PythonShell.run("predict.py", options, function (err, results) {
+          if (err) {
+            myReject({ success: false, err });
+          }
+          // results is an array consisting of messages collected during execution
+          console.log(err);
+          console.log('results');
+          console.log(results);
+          // console.log(results[2].substring(2, results[2].length-2));
+          myResolve({
+            success: true,
+            results: results[results.length-1],
+            
+          }); // when successful
+        });
+
+        // myReject();  // when error
+      });
+
+      if (success) {
+        // return [
+        //   results,
+        //   {
+        //     b443: bw(W) + bbp(W, bbp_B0, R443, R550),
+        //     w: W,
+        //     R443: R443,
+        //     r443: rrs(R443),
+        //     a443: a(440, R443, bbp_B0, R443, R550),
+        //     aw443: aw(W),
+        //     bw443: bw(W),
+        //   },
+        // ];
+        console.log(results);
+        console.log(data);
+        res.json({
+          status: true,
+          message: "Welcome to Tirtham",
+          errors: [],
+          data: {
+            satellite_data: data,
+            predicted_chl: results,
+            calculated_vars: {b443:res_array[0][0],w:res_array[0][1],R443:res_array[0][2],r443:res_array[0][3],a443:res_array[0][4],aw443:res_array[0][5],bw443:res_array[0][6]},
+          },
+        });
+      } else {
+        console.log("Test Error: " + err);
+        // return;
+        res.json({
+          status: false,
+          message: "Welcome to Tirtham",
+          errors: [err],
+          data: {
+            
+          },
+        });
+      }
+    }
+  );
+
+  //   Map.centerObject(geometry,20)
+};
+
+const getReflectanceModis = async (req, res) => {
+  console.log(req.body.lat);
+  console.log(req.body.long);
+  function bufferPoints(radius, bounds) {
+    return function (pt) {
+      pt = ee.Feature(pt);
+      return bounds ? pt.buffer(radius).bounds() : pt.buffer(radius);
+    };
+  }
+
   async function zonalStats(ic, fc, params) {
     // Initialize internal params dictionary.
     var _params = {
@@ -408,117 +547,226 @@ const getReflectanceModis = async (req, res) => {
       bandsRename: null,
       imgProps: null,
       imgPropsRename: null,
-      datetimeName: 'datetime',
-      datetimeFormat: 'YYYY-MM-dd HH:mm:ss'
+      datetimeName: "datetime",
+      datetimeFormat: "YYYY-MM-dd HH:mm:ss",
     };
-  
+
     // Replace initialized params with provided params.
     if (params) {
       for (var param in params) {
         _params[param] = params[param] || _params[param];
       }
     }
-  
+
     // Set default parameters based on an image representative.
     var imgRep = ic.first();
-    var nonSystemImgProps = ee.Feature(null)
-      .copyProperties(imgRep).propertyNames();
+    var nonSystemImgProps = ee
+      .Feature(null)
+      .copyProperties(imgRep)
+      .propertyNames();
     if (!_params.bands) _params.bands = imgRep.bandNames();
     if (!_params.bandsRename) _params.bandsRename = _params.bands;
     if (!_params.imgProps) _params.imgProps = nonSystemImgProps;
     if (!_params.imgPropsRename) _params.imgPropsRename = _params.imgProps;
-  
+
     // Map the reduceRegions function over the image collection.
-    var results = ic.map(function(img) {
-      // Select bands (optionally rename), set a datetime & timestamp property.
-      img = ee.Image(img.select(_params.bands, _params.bandsRename).divide(1e4))
-        .set(_params.datetimeName, img.date().format(_params.datetimeFormat))
-        .set('timestamp', img.get('system:time_start'));
-  
-      // Define final image property dictionary to set in output features.
-      var propsFrom = ee.List(_params.imgProps)
-        .cat(ee.List([_params.datetimeName, 'timestamp']));
-      var propsTo = ee.List(_params.imgPropsRename)
-        .cat(ee.List([_params.datetimeName, 'timestamp']));
-      // var imgProps = img.toDictionary(propsFrom).rename(propsFrom, propsTo);
-      var imgProps = img.toDictionary(propsFrom);
-  
-      // Subset points that intersect the given image.
-      var fcSub = fc.filterBounds(img.geometry());
-  
-      // Reduce the image by regions.
-      return img.reduceRegions({
-        collection: fcSub,
-        reducer: _params.reducer,
-        scale: _params.scale,
-        crs: _params.crs
+    var results = ic
+      .map(function (img) {
+        // Select bands (optionally rename), set a datetime & timestamp property.
+        img = ee
+          .Image(img.select(_params.bands, _params.bandsRename).divide(1e4))
+          .set(_params.datetimeName, img.date().format(_params.datetimeFormat))
+          .set("timestamp", img.get("system:time_start"));
+
+        // Define final image property dictionary to set in output features.
+        var propsFrom = ee
+          .List(_params.imgProps)
+          .cat(ee.List([_params.datetimeName, "timestamp"]));
+        var propsTo = ee
+          .List(_params.imgPropsRename)
+          .cat(ee.List([_params.datetimeName, "timestamp"]));
+        // var imgProps = img.toDictionary(propsFrom).rename(propsFrom, propsTo);
+        var imgProps = img.toDictionary(propsFrom);
+
+        // Subset points that intersect the given image.
+        var fcSub = fc.filterBounds(img.geometry());
+
+        // Reduce the image by regions.
+        return (
+          img
+            .reduceRegions({
+              collection: fcSub,
+              reducer: _params.reducer,
+              scale: _params.scale,
+              crs: _params.crs,
+            })
+            // Add metadata to each feature.
+            .map(function (f) {
+              return f.set(imgProps);
+            })
+        );
       })
-      // Add metadata to each feature.
-      .map(function(f) {
-        return f.set(imgProps);
-      });
-    }).flatten().filter(ee.Filter.notNull(_params.bandsRename));
-  
+      .flatten()
+      .filter(ee.Filter.notNull(_params.bandsRename));
+
     return results;
   }
-  
+
   var pts = ee.FeatureCollection([
-    ee.Feature(ee.Geometry.Point([req.body.lat, req.body.long]), {plot_id: 1}),
+    ee.Feature(ee.Geometry.Point([req.body.long,req.body.lat]), {
+      plot_id: 1,
+    }),
+    ee.Feature(ee.Geometry.Point([req.body.long-0.02, req.body.lat-0.0002]), {plot_id: 2}),
+    ee.Feature(ee.Geometry.Point([req.body.long+0.02, req.body.lat+0.0002]), {plot_id: 3}),
+    ee.Feature(ee.Geometry.Point([req.body.long-0.02, req.body.lat+0.0002]), {plot_id: 4}),
+    ee.Feature(ee.Geometry.Point([req.body.long+0.02, req.body.lat-0.0002]), {plot_id: 5})
     // ee.Feature(ee.Geometry.Point([-118.6010, 37.0777]), {plot_id: 1}),
     // ee.Feature(ee.Geometry.Point([-118.5896, 37.0778]), {plot_id: 2}),
     // ee.Feature(ee.Geometry.Point([-118.5842, 37.0805]), {plot_id: 3}),
     // ee.Feature(ee.Geometry.Point([-118.5994, 37.0936]), {plot_id: 4}),
     // ee.Feature(ee.Geometry.Point([-118.5861, 37.0567]), {plot_id: 5})
   ]);
-  
+
   var ptsModis = pts.map(bufferPoints(50, true));
-  
-  var modisCol = ee.ImageCollection('MODIS/006/MODOCGA')
-    .filterDate('2021-01-01', '2022-01-01');
-    
+
+  var modisCol = ee
+    .ImageCollection("MODIS/006/MODOCGA")
+    .filterDate("2021-01-01", "2022-12-01");
+
   // Define parameters for the zonalStats function.
   var params = {
-    reducer: ee.Reducer.median(),
+    reducer: ee.Reducer.mean(),
     scale: 500,
-    crs: 'EPSG:5070',
-    bands: ['sur_refl_b08', 'sur_refl_b09', 'sur_refl_b10', 'sur_refl_b12', 'sur_refl_b13'],
-    bandsRename: ['R412','R443', 'R488', 'R550', 'R667'],
-    datetimeName: 'date',
-    datetimeFormat: 'YYYY-MM-dd'
+    crs: "EPSG:5070",
+    bands: [
+      "sur_refl_b08",
+      "sur_refl_b09",
+      "sur_refl_b10",
+      "sur_refl_b12",
+      "sur_refl_b13",
+    ],
+    bandsRename: ["R412", "R443", "R488", "R550", "R667"],
+    datetimeName: "date",
+    datetimeFormat: "YYYY-MM-dd",
   };
-  
-    // Extract zonal statistics per point per image.
-    var ptsModisStats = zonalStats(modisCol, ptsModis, params).then(async (result) => {
+
+  // Extract zonal statistics per point per image.
+  var ptsModisStats = zonalStats(modisCol, ptsModis, params).then(
+    async (result) => {
       var data1 = convert(result).features;
       var data1 = Array.from(data1);
       // var data = convert(result.limit(1)).features[0].properties;
-      var data = data1[data1.length - 1].properties;
-      console.log(data);
-      console.log(data1[data1.length - 1]);
-      const result1 = await calculate(parseFloat(data['R412'])*1, parseFloat(data['R443'])*1, parseFloat(data['R488'])*1, parseFloat(data['R550'])*1, parseFloat(data['R667'])*1);
-      console.log('predicted value', result1);
-      // console.log(R412);
-      res.json({
+      const data = data1[data1.length - 1].properties;
+      // console.log(data);
+      // console.log(data1[data1.length - 1]);
+      var res_array = [];
+      for (let index = 1; index < 51; index++) {
+        var datum = data1[data1.length - index].properties;
+        console.log(datum);
+        var element = await calculate(
+          parseFloat(datum["R412"]) * 1,
+          parseFloat(datum["R443"]) * 1,
+          parseFloat(datum["R488"]) * 1,
+          parseFloat(datum["R550"]) * 1,
+          parseFloat(datum["R667"]) * 1
+        );
+        res_array.push(element);
+      }
+      console.log(res_array);
+      let options = {
+        mode: "text",
+        // pythonPath: 'path/to/python',
+        pythonOptions: ["-u"], // get print results in real-time
+        scriptPath: "./controllers",
+        args: res_array,
+      };
+      // console.log(options);
+      const {
+        success,
+        err = "",
+        results,
+      } = await new Promise(function (myResolve, myReject) {
+        // "Producing Code" (May take some time)
+        PythonShell.run("predict.py", options, function (err, results) {
+          if (err) {
+            myReject({ success: false, err });
+          }
+          // results is an array consisting of messages collected during execution
+          console.log(err);
+          console.log('results');
+          console.log(results);
+          // console.log(results[2].substring(2, results[2].length-2));
+          myResolve({
+            success: true,
+            results: results[results.length-1],
+            
+          }); // when successful
+        });
+
+        // myReject();  // when error
+      });
+
+      if (success) {
+        // return [
+        //   results,
+        //   {
+        //     b443: bw(W) + bbp(W, bbp_B0, R443, R550),
+        //     w: W,
+        //     R443: R443,
+        //     r443: rrs(R443),
+        //     a443: a(440, R443, bbp_B0, R443, R550),
+        //     aw443: aw(W),
+        //     bw443: bw(W),
+        //   },
+        // ];
+        console.log(results);
+        console.log(data);
+        res.json({
           status: true,
           message: "Welcome to Tirtham",
           errors: [],
           data: {
-              satellite_data: convert(result.limit(1)).features[0].properties,
-              predicted_chl: result1[0],
-              calculated_vars: result1[1]
+            satellite_data: data,
+            predicted_chl: results,
+            calculated_vars: {b443:res_array[0][0],w:res_array[0][1],R443:res_array[0][2],r443:res_array[0][3],a443:res_array[0][4],aw443:res_array[0][5],bw443:res_array[0][6]},
           },
         });
-    });
-    
-    
+      } else {
+        console.log("Test Error: " + err);
+        // return;
+        res.json({
+          status: false,
+          message: "Welcome to Tirtham",
+          errors: [err],
+          data: {
+            
+          },
+        });
+      }
+    }
+  );
+  // const result1 = await calculate(parseFloat(data['R412'])*1, parseFloat(data['R443'])*1, parseFloat(data['R488'])*1, parseFloat(data['R550'])*1, parseFloat(data['R667'])*1);
+  // console.log('predicted value', result1);
+  // console.log(R412);
+  // res.json({
+  //   status: true,
+  //   message: "Welcome to Tirtham",
+  //   errors: [],
+  //   data: {
+  //     satellite_data: convert(result.limit(1)).features[0].properties,
+  //     // predicted_chl: result1[0],
+  //     // calculated_vars: result1[1]
+  //   },
+  // });
+  // });
+
   //   Map.centerObject(geometry,20)
-  
-}
+};
 
 module.exports = {
-    index,
-    mapid,
-    getReflectanceLandsat,
-    getReflectanceModis,
-    runCalculate
-  };
+  index,
+  mapid,
+  getReflectanceLandsat,
+  getReflectanceModis,
+  runCalculate,
+};
