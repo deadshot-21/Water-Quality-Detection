@@ -4,7 +4,7 @@ const privateKey = require("../.private-key.json");
 const wv = require("../wv_aw_bw.json");
 const wv_data = JSON.parse(wv);
 const { PythonShell } = require("python-shell");
-
+const fs = require("fs");
 // Define endpoint at /mapid.
 // const app = express().get('/mapid', (_, response) => {
 //   const srtm = ee.Image('CGIAR/SRTM90_V4');
@@ -172,23 +172,23 @@ const calculate = async (R412, R443, R488, R550, R667) => {
   //   return -1;
   // }
   // );
-  console.log('calculate: '+[
-    bw(W) + bbp(W, bbp_B0, R443, R550),
-    W,
-    R443,
-    rrs(R443),
-    a(440, R443, bbp_B0, R443, R550),
-    aw(W),
-    bw(W),
-  ]);
-  console.log("IMPORTANT");
+  // console.log('calculate: '+[
+  //   bw(W) + bbp(W, bbp_B0, R443, R550),
+  //   W,
+  //   R443,
+  //   rrs(R443),
+  //   a(440, R443, bbp_B0, R443, R550),
+  //   aw(W),
+  //   bw(W),
+  // ]);
+  // console.log("IMPORTANT");
   let a_coeff = [0.26294, -2.64669, 1.28364, 1.08209, -1.76828];
   let latter = 0;
   for (let index = 1; index <= 4; index++) {
     latter += a_coeff[index]*(Math.pow(Math.log10(R443/R550),index));
   }	
   let chl_a = Math.pow(10,a_coeff[0] + latter);
-  console.log("CHLOROPHYLL  "+chl_a);
+  // console.log("CHLOROPHYLL  "+chl_a);
   return [
     bw(W) + bbp(W, bbp_B0, R443, R550),
     W,
@@ -763,10 +763,327 @@ const getReflectanceModis = async (req, res) => {
   //   Map.centerObject(geometry,20)
 };
 
+const extractDataLandsat = async (req,res) => {
+  console.log(req.body.lat);
+  console.log(req.body.long);
+  function bufferPoints(radius, bounds) {
+    return function (pt) {
+      pt = ee.Feature(pt);
+      return bounds ? pt.buffer(radius).bounds() : pt.buffer(radius);
+    };
+  }
+
+  const zonalStats = async (ic, fc, params) => {
+    // Initialize internal params dictionary.
+    var _params = {
+      reducer: ee.Reducer.mean(),
+      scale: null,
+      crs: null,
+      bands: null,
+      bandsRename: null,
+      imgProps: null,
+      imgPropsRename: null,
+      datetimeName: "datetime",
+      datetimeFormat: "YYYY-MM-dd HH:mm:ss",
+    };
+
+    // Replace initialized params with provided params.
+    if (params) {
+      for (var param in params) {
+        _params[param] = params[param] || _params[param];
+      }
+    }
+
+    // Set default parameters based on an image representative.
+    var imgRep = ic.first();
+    // console.log(convert(imgRep));
+    var nonSystemImgProps = ee
+      .Feature(null)
+      .copyProperties(imgRep)
+      .propertyNames();
+    if (!_params.bands) _params.bands = imgRep.bandNames();
+    if (!_params.bandsRename) _params.bandsRename = _params.bands;
+    if (!_params.imgProps) _params.imgProps = nonSystemImgProps;
+    if (!_params.imgPropsRename) _params.imgPropsRename = _params.imgProps;
+
+    // Map the reduceRegions function over the image collection.
+    var results = await ic
+      .map(function (img) {
+        // Select bands (optionally rename), set a datetime & timestamp property.
+        img = ee
+          .Image(img.select(_params.bands, _params.bandsRename).divide(3.6e6))
+          .set(_params.datetimeName, img.date().format(_params.datetimeFormat))
+          .set("timestamp", img.get("system:time_start"));
+
+        // Define final image property dictionary to set in output features.
+        var propsFrom = ee
+          .List(_params.imgProps)
+          .cat(ee.List([_params.datetimeName, "timestamp"]));
+        var propsTo = ee
+          .List(_params.imgPropsRename)
+          .cat(ee.List([_params.datetimeName, "timestamp"]));
+        // var imgProps = img.toDictionary(propsFrom).rename(propsFrom, propsTo);
+        var imgProps = img.toDictionary(propsFrom);
+
+        // Subset points that intersect the given image.
+        var fcSub = fc.filterBounds(img.geometry());
+
+        // Reduce the image by regions.
+        return (
+          img
+            .reduceRegions({
+              collection: fcSub,
+              reducer: _params.reducer,
+              scale: _params.scale,
+              crs: _params.crs,
+            })
+            // Add metadata to each feature.
+            .map(function (f) {
+              return f.set(imgProps);
+            })
+        );
+      })
+      .flatten()
+      .filter(ee.Filter.notNull(_params.bandsRename));
+
+    // console.log(results);
+    return results;
+  };
+
+  var pts = ee.FeatureCollection([
+    ee.Feature(ee.Geometry.Point([parseFloat(req.body.long),parseFloat(req.body.lat)]), {
+      plot_id: 1,
+    }),
+    // ee.Feature(ee.Geometry.Point([parseFloat(req.body.long-0.02), parseFloat(req.body.lat-0.0002)]), {plot_id: 2}),
+    // ee.Feature(ee.Geometry.Point([parseFloat(req.body.long+0.02), parseFloat(req.body.lat+0.0002)]), {plot_id: 3}),
+    // ee.Feature(ee.Geometry.Point([parseFloat(req.body.long-0.02), parseFloat(req.body.lat+0.0002)]), {plot_id: 4}),
+    // ee.Feature(ee.Geometry.Point([parseFloat(req.body.long+0.02), parseFloat(req.body.lat-0.0002)]), {plot_id: 5})
+  ]);
+
+  function fmask(img) {
+    var cloudShadowBitMask = 1 << 3;
+    var cloudsBitMask = 1 << 5;
+    var qa = img.select("QA_PIXEL");
+    var mask = qa
+      .bitwiseAnd(cloudShadowBitMask)
+      .eq(0)
+      .and(qa.bitwiseAnd(cloudsBitMask).eq(0));
+    return img.updateMask(mask);
+  }
+
+  function renameOli(img) {
+    return img.select(
+      ["SR_B2", "SR_B3", "SR_B4", "SR_B5", "SR_B6", "SR_B7"],
+      ["Blue", "Green", "Red", "NIR", "SWIR1", "SWIR2"]
+    );
+  }
+
+  // Selects and renames bands of interest for TM/ETM+.
+  function renameEtm(img) {
+    return img.select(
+      ["B1", "B2", "B3", "B4", "B5", "B7"],
+      ["Blue", "Green", "Red", "NIR", "SWIR1", "SWIR2"]
+    );
+  }
+
+  // Prepares (cloud masks and renames) OLI images.
+  function prepOli(img) {
+    // img = fmask(img);
+    // img = renameOli(img);
+    return img;
+  }
+
+  // Prepares (cloud masks and renames) TM/ETM+ images.
+  function prepEtm(img) {
+    // img = fmask(img);
+    // img = renameEtm(img);
+    return img;
+  }
+
+  var ptsLandsat = pts.map(bufferPoints(15, true));
+
+  var oliCol = ee
+    .ImageCollection("LANDSAT/LC08/C02/T1_L2")
+    .filterDate("2017-01-01", "2022-12-01")
+    .filterBounds(ptsLandsat);
+  // .map(prepOli);
+  // console.log(convert(oliCol));
+  // var etmCol = ee.ImageCollection('LANDSAT/LE07/C01/T1_SR')
+  //   .filterBounds(ptsLandsat)
+  //   .map(prepEtm);
+
+  // var tmCol = ee.ImageCollection('LANDSAT/LT05/C01/T1_SR')
+  //   .filterBounds(ptsLandsat)
+  //   .map(prepEtm);
+
+  // var landsatCol = oliCol.merge(etmCol).merge(tmCol);
+
+  var params = {
+    reducer: ee.Reducer.mean(),
+    scale: 30,
+    crs: "EPSG:5070",
+    // bands: ['Blue', 'Green', 'Red', 'NIR', 'SWIR1', 'SWIR2'],
+    bands: ["SR_B1", "SR_B2", "SR_B3", "SR_B4"],
+    // bandsRename: ["ls_blue", "ls_green", "ls_red"],
+    bandsRename: ["R443", "R488", "R550", "R667"],
+    // imgProps: ['LANDSAT_ID', 'SATELLITE'],
+    // imgPropsRename: ['img_id', 'satellite'],
+    datetimeName: "date",
+    datetimeFormat: "YYYY-MM-dd",
+  };
+
+  // Extract zonal statistics per point per image.
+  var ptsLandsatStats = zonalStats(oliCol, ptsLandsat, params).then(
+    async (result) => {
+      // console.log(convert(result).features);
+      var data1 = convert(result).features;
+      var data1 = Array.from(data1);
+      // [
+      //   bw(W) + bbp(W, bbp_B0, R443, R550),
+      //   W,
+      //   R443,
+      //   rrs(R443),
+      //   a(440, R443, bbp_B0, R443, R550),
+      //   aw(W),
+      //   bw(W),
+      // ];
+      console.log('for loop start');
+      const toSave = data1.map(element => element.properties);
+      for (let index = 0; index < toSave.length; index++) {
+        // const element = toSave[index];
+        // let obj = element.properties;
+        const calc =  await calculate(
+              parseFloat(toSave[index]["R443"]) * 1,
+              parseFloat(toSave[index]["R443"]) * 1,
+              parseFloat(toSave[index]["R488"]) * 1,
+              parseFloat(toSave[index]["R550"]) * 1,
+              parseFloat(toSave[index]["R667"]) * 1
+            );
+        toSave[index]['bb'] = calc[0];
+        toSave[index]['W'] = calc[1];
+        toSave[index]['Rrs'] = calc[2];
+        toSave[index]['rrs'] = calc[3];
+        toSave[index]['a'] = calc[4];
+        toSave[index]['aw'] = calc[5];
+        toSave[index]['bw'] = calc[6];
+
+        if(index == toSave.length-1) {
+          // console.log(toSave);
+          const jsonContent = JSON.stringify(toSave);
+          // console.log(jsonContent);
+          fs.writeFile("ganga.json", jsonContent, 'utf8', function (err) {
+              if (err) {
+                  return console.log(err);
+              }
+              console.log("The file was saved!");
+          });
+        }
+      }
+      
+      
+      // const data = data1[data1.length - 1].properties;
+      // res.json({
+      //   status: true,
+      //   message: "Welcome to Tirtham",
+      //   errors: [],
+      //   data: {
+      //     data: convert(result.limit(1)),
+      //   },
+      // });
+      // var res_array = [];
+      // for (let index = 1; index < data1.length; index++) {
+      //   var datum = data1[index].properties;
+      //   // console.log(datum);
+      //   var element = await calculate(
+      //     parseFloat(datum["R443"]) * 1,
+      //     parseFloat(datum["R443"]) * 1,
+      //     parseFloat(datum["R488"]) * 1,
+      //     parseFloat(datum["R550"]) * 1,
+      //     parseFloat(datum["R667"]) * 1
+      //   );
+      //   res_array.push(element);
+      // }
+      // console.log(res_array);
+      // let options = {
+      //   mode: "text",
+      //   // pythonPath: 'path/to/python',
+      //   pythonOptions: ["-u"], // get print results in real-time
+      //   scriptPath: "./controllers",
+      //   args: res_array,
+      // };
+      // console.log(options);
+      const success = true;
+      // const {
+      //   success,
+      //   err = "",
+      //   results,
+      // } = await new Promise(function (myResolve, myReject) {
+      //   // "Producing Code" (May take some time)
+      //   PythonShell.run("predict.py", options, function (err, results) {
+      //     if (err) {
+      //       myReject({ success: false, err });
+      //     }
+      //     // results is an array consisting of messages collected during execution
+      //     // console.log(err);
+      //     // console.log('results');
+      //     // console.log(results);
+      //     // console.log(results[2].substring(2, results[2].length-2));
+      //     myResolve({
+      //       success: true,
+      //       results: results[results.length-1],
+            
+      //     }); // when successful
+      //   });
+
+      //   // myReject();  // when error
+      // });
+
+      if (success) {
+        // return [
+        //   results,
+        //   {
+        //     b443: bw(W) + bbp(W, bbp_B0, R443, R550),
+        //     w: W,
+        //     R443: R443,
+        //     r443: rrs(R443),
+        //     a443: a(440, R443, bbp_B0, R443, R550),
+        //     aw443: aw(W),
+        //     bw443: bw(W),
+        //   },
+        // ];
+        // console.log(results);
+        // console.log(data);
+        res.json({
+          status: true,
+          message: "File saved",
+          errors: [],
+          data: {
+            // satellite_data: data,
+            // predicted_chl: results,
+            // calculated_vars: {b443:res_array[0][0],w:res_array[0][1],R443:res_array[0][2],r443:res_array[0][3],a443:res_array[0][4],aw443:res_array[0][5],bw443:res_array[0][6]},
+          },
+        });
+      } else {
+        console.log("Test Error: " + err);
+        // return;
+        res.json({
+          status: false,
+          message: "Welcome to Tirtham",
+          errors: [err],
+          data: {
+            
+          },
+        });
+      }
+    }
+  );
+}
+
 module.exports = {
   index,
   mapid,
   getReflectanceLandsat,
   getReflectanceModis,
   runCalculate,
+  extractDataLandsat
 };
