@@ -763,7 +763,7 @@ const getReflectanceModis = async (req, res) => {
   //   Map.centerObject(geometry,20)
 };
 
-const extractDataLandsat = async (req,res) => {
+const timeSeries = async (req, res) => {
   console.log(req.body.lat);
   console.log(req.body.long);
   function bufferPoints(radius, bounds) {
@@ -971,110 +971,75 @@ const extractDataLandsat = async (req,res) => {
           // console.log(toSave);
           const jsonContent = JSON.stringify(toSave);
           // console.log(jsonContent);
-          fs.writeFile("ganga.json", jsonContent, 'utf8', function (err) {
+          fs.writeFile("file.json", jsonContent, 'utf8', async function (err) {
               if (err) {
                   return console.log(err);
               }
               console.log("The file was saved!");
+
+              let options = {
+                mode: "text",
+                // pythonPath: 'path/to/python',
+                pythonOptions: ["-u"], // get print results in real-time
+                scriptPath: "./controllers",
+                args: [],
+              };
+            const {
+                success,
+                er = "",
+                results,
+              } = await new Promise(function (myResolve, myReject) {
+                // "Producing Code" (May take some time)
+                PythonShell.run("timeseries.py", options, function (errr, results) {
+                  if (errr) {
+                    console.log(errr);
+                    myReject({ success: false, errr });
+                  }
+                  // results is an array consisting of messages collected during execution
+                  // console.log(err);
+                  // console.log('results');
+                  console.log(results);
+                  // console.log(results[2].substring(2, results[2].length-2));
+                  myResolve({
+                    success: true,
+                    // results: results[results.length-1],
+                    results: results,
+                    
+                  }); // when successful
+                });
+        
+                // myReject();  // when error
+              });
+        
+              if (success) {
+                res.json({
+                  status: true,
+                  message: "TIme series data for 10 steps",
+                  errors: [],
+                  data: {
+                    time_series: results,
+                    // satellite_data: data,
+                    // predicted_chl: results,
+                    // calculated_vars: {b443:res_array[0][0],w:res_array[0][1],R443:res_array[0][2],r443:res_array[0][3],a443:res_array[0][4],aw443:res_array[0][5],bw443:res_array[0][6]},
+                  },
+                });
+              } else {
+                console.log("Test Error: " + err);
+                // return;
+                res.json({
+                  status: false,
+                  message: "Welcome to Tirtham",
+                  errors: [er],
+                  data: {
+                    
+                  },
+                });
+              }
           });
+          
         }
       }
       
-      
-      // const data = data1[data1.length - 1].properties;
-      // res.json({
-      //   status: true,
-      //   message: "Welcome to Tirtham",
-      //   errors: [],
-      //   data: {
-      //     data: convert(result.limit(1)),
-      //   },
-      // });
-      // var res_array = [];
-      // for (let index = 1; index < data1.length; index++) {
-      //   var datum = data1[index].properties;
-      //   // console.log(datum);
-      //   var element = await calculate(
-      //     parseFloat(datum["R443"]) * 1,
-      //     parseFloat(datum["R443"]) * 1,
-      //     parseFloat(datum["R488"]) * 1,
-      //     parseFloat(datum["R550"]) * 1,
-      //     parseFloat(datum["R667"]) * 1
-      //   );
-      //   res_array.push(element);
-      // }
-      // console.log(res_array);
-      // let options = {
-      //   mode: "text",
-      //   // pythonPath: 'path/to/python',
-      //   pythonOptions: ["-u"], // get print results in real-time
-      //   scriptPath: "./controllers",
-      //   args: res_array,
-      // };
-      // console.log(options);
-      const success = true;
-      // const {
-      //   success,
-      //   err = "",
-      //   results,
-      // } = await new Promise(function (myResolve, myReject) {
-      //   // "Producing Code" (May take some time)
-      //   PythonShell.run("predict.py", options, function (err, results) {
-      //     if (err) {
-      //       myReject({ success: false, err });
-      //     }
-      //     // results is an array consisting of messages collected during execution
-      //     // console.log(err);
-      //     // console.log('results');
-      //     // console.log(results);
-      //     // console.log(results[2].substring(2, results[2].length-2));
-      //     myResolve({
-      //       success: true,
-      //       results: results[results.length-1],
-            
-      //     }); // when successful
-      //   });
-
-      //   // myReject();  // when error
-      // });
-
-      if (success) {
-        // return [
-        //   results,
-        //   {
-        //     b443: bw(W) + bbp(W, bbp_B0, R443, R550),
-        //     w: W,
-        //     R443: R443,
-        //     r443: rrs(R443),
-        //     a443: a(440, R443, bbp_B0, R443, R550),
-        //     aw443: aw(W),
-        //     bw443: bw(W),
-        //   },
-        // ];
-        // console.log(results);
-        // console.log(data);
-        res.json({
-          status: true,
-          message: "File saved",
-          errors: [],
-          data: {
-            // satellite_data: data,
-            // predicted_chl: results,
-            // calculated_vars: {b443:res_array[0][0],w:res_array[0][1],R443:res_array[0][2],r443:res_array[0][3],a443:res_array[0][4],aw443:res_array[0][5],bw443:res_array[0][6]},
-          },
-        });
-      } else {
-        console.log("Test Error: " + err);
-        // return;
-        res.json({
-          status: false,
-          message: "Welcome to Tirtham",
-          errors: [err],
-          data: {
-            
-          },
-        });
-      }
     }
   );
 }
@@ -1085,5 +1050,6 @@ module.exports = {
   getReflectanceLandsat,
   getReflectanceModis,
   runCalculate,
-  extractDataLandsat
+  // extractDataLandsat,
+  timeSeries
 };
