@@ -764,6 +764,15 @@ const getReflectanceModis = async (req, res) => {
 };
 
 const timeSeries = async (req, res) => {
+  const today = new Date();
+  const yyyy = today.getFullYear();
+  let mm = today.getMonth() + 1; // Months start at 0!
+  let dd = today.getDate();
+
+  if (dd < 10) dd = '0' + dd;
+  if (mm < 10) mm = '0' + mm;
+
+  const formattedToday = yyyy + '-' + mm + '-' + dd;
   console.log(req.body.lat);
   console.log(req.body.long);
   function bufferPoints(radius, bounds) {
@@ -904,7 +913,7 @@ const timeSeries = async (req, res) => {
 
   var oliCol = ee
     .ImageCollection("LANDSAT/LC08/C02/T1_L2")
-    .filterDate("2017-01-01", "2022-12-01")
+    .filterDate("2017-01-01", formattedToday)
     .filterBounds(ptsLandsat);
   // .map(prepOli);
   // console.log(convert(oliCol));
@@ -1014,7 +1023,7 @@ const timeSeries = async (req, res) => {
               if (success) {
                 res.json({
                   status: true,
-                  message: "TIme series data for 10 steps",
+                  message: "Time series data for 10 steps",
                   errors: [],
                   data: {
                     time_series: results,
