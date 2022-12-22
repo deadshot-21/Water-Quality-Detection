@@ -26,7 +26,7 @@ import numpy as np
 model = VAR(np.array(df[['C','Rrs','rrs','bb','a']]))
 # model = sm.tsa.vector_ar.var_model.VAR(np.array(df[['C','Rrs','rrs','bb','a']]))
 results = model.fit(maxlags=10, ic='aic')
-print(results.summary())
+# print(results.summary())
 # print('np array')
 # print(np.array(df[['C','Rrs','rrs','bb','a']]))
 # print('np array end')

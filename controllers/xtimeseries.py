@@ -50,10 +50,18 @@ def create_features(df):
     return df
 df = create_features(df)
 
+def add_lags(df):
+    target_map = df['C'].to_dict()
+    df['lag1'] = (df.index - pd.Timedelta('368 days')).map(target_map)
+    df['lag2'] = (df.index - pd.Timedelta('736 days')).map(target_map)
+    df['lag3'] = (df.index - pd.Timedelta('1104 days')).map(target_map)
+    return df
+df = add_lags(df)
 # train = create_features(train)
 # test = create_features(test)
 
-FEATURES = ['bb','Rrs','a','dayofyear', 'dayofweek', 'year']
+# FEATURES = ['bb','Rrs','a','dayofyear', 'dayofweek', 'year']
+FEATURES = ['dayofyear', 'hour', 'dayofweek', 'quarter', 'month', 'year', 'lag1','lag2','lag3']
 TARGET = 'C'
 
 X_train = df[FEATURES]
@@ -63,26 +71,70 @@ y_train = df[TARGET]
 # y_test = test[TARGET]
 
 reg = xgb.XGBRegressor(base_score=0.5, booster='gbtree',    
-                       n_estimators=1000,
+                      #  n_estimators=1000,
+                       n_estimators=500,
                        early_stopping_rounds=50,
                        objective='reg:linear',
                        max_depth=3,
                        learning_rate=0.01)
 reg.fit(X_train, y_train,
-        # eval_set=[(X_train, y_train)],
+        eval_set=[(X_train, y_train)],
         verbose=100)
+
+# 1----------------
 # fi = pd.DataFrame(data=reg.feature_importances_,
 #              index=reg.feature_names_in_,
 #              columns=['importance'])
 # fi.sort_values('importance').plot(kind='barh', title='Feature Importance')
 # plt.show()
-test['prediction'] = reg.predict(X_test)
-df = df.merge(test[['prediction']], how='left', left_index=True, right_index=True)
-ax = df[['C']].plot(figsize=(15, 5))
-df['prediction'].plot(ax=ax, style='.')
+# test['prediction'] = reg.predict(X_test)
+# df = df.merge(test[['prediction']], how='left', left_index=True, right_index=True)
+# ax = df[['C']].plot(figsize=(15, 5))
+# df['prediction'].plot(ax=ax, style='.')
+# plt.legend(['Truth Data', 'Predictions'])
+# ax.set_title('Raw Dat and Prediction')
+# plt.show()
+
+
+# 2 --------------------------
+# from datetime import datetime
+
+# d = df.index.max().strftime("%Y-%m-%d")
+# future = pd.date_range(d,'2023-05-01', freq='16d')
+# future_df = pd.DataFrame(index=future)
+# future_df['isFuture'] = True
+# df['isFuture'] = False
+# df_and_future = pd.concat([df, future_df])
+# df_and_future = create_features(df_and_future)
+# df_and_future = add_lags(df_and_future)
+
+# future_w_features = df_and_future.query('isFuture').copy()
+# future_w_features['pred'] = reg.predict(future_w_features[FEATURES])
+# future_w_features['pred'].plot(figsize=(10, 5),
+#                                color=color_pal[4],
+#                               #  ms=1,
+#                               #  lw=1,
+#                                title='Future Predictions')
+# plt.show()
+# print(future_w_features)
+
+
+# 3 --------------------------
+
+future_w_features = df.loc[df.index >= '01-11-2022'].copy()
+future_w_features['pred'] = reg.predict(future_w_features[FEATURES])
+ax = future_w_features[['C']].plot(figsize=(15, 5))
+future_w_features['pred'].plot(ax=ax)
 plt.legend(['Truth Data', 'Predictions'])
 ax.set_title('Raw Dat and Prediction')
 plt.show()
+
+
+
+
+
+
+# old -----------------------
 # import numpy as np
 # # model = sm.tsa.api.VAR(np.array(df[['C','Rrs','rrs','bb','a']]))
 # model = VAR(np.array(df[['C','Rrs','rrs','bb','a']]))
