@@ -1027,6 +1027,7 @@ const timeSeries = async (req, res) => {
                   errors: [],
                   data: {
                     time_series: results,
+                    steps: 10
                     // satellite_data: data,
                     // predicted_chl: results,
                     // calculated_vars: {b443:res_array[0][0],w:res_array[0][1],R443:res_array[0][2],r443:res_array[0][3],a443:res_array[0][4],aw443:res_array[0][5],bw443:res_array[0][6]},
