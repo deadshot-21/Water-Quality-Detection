@@ -10,7 +10,7 @@ router.post('/getReflectanceM',homeController.getReflectanceModis);
 router.post('/calculate',homeController.runCalculate);
 // router.post('/extraction',homeController.extractDataLandsat);
 router.post('/timeSeries',homeController.timeSeries);
-// router.get('/getUser', homeController.getUser);
+router.get('/fetchData', homeController.fetchGanga);
 // router.post('/addCycle', homeController.addCycle);
 // router.post('/addStand', homeController.addStand);
 // router.post('/prebook',  homeController.prebook);

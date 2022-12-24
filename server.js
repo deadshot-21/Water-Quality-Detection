@@ -1,18 +1,41 @@
 const express=require('express')
-// const mongoose=require('./db/db.js')
 const privateKey = require('./.private-key.json');
 const ee = require('@google/earthengine');
 const {PythonShell} = require('python-shell')
-
+const CronJob = require('cron').CronJob;
 const homeRouter=require('./routes/homeRouter')
+const {autoTimeSeries}=require('./controllers/homeController')
+require("dotenv").config();
+const mongoose = require('mongoose')
+const Location = require('./models/locationModel')
 
 const app=express()
 const port=process.env.PORT||3000
+
+// const uri = 'mongodb://localhost:27017/antakshariDB';
+mongoose.connect(process.env.MONGO_URI, { useNewUrlParser:true, useUnifiedTopology:true });
+const db = mongoose.connection;
+
+db.on("error", (err) => {
+    console.log(err);
+});
+
+db.once("open",() => {
+    console.log("database connected");
+});
 
 app.use(express.json())
 app.use(express.urlencoded({extended: true}))
 
 app.use('/', homeRouter)
+const job = new CronJob("00 49 17 * * 6", async function jobYouNeedToExecute() {
+  // Do whatever you want in here. Send email, Make  database backup or download data.
+  console.log(new Date().toLocaleString());
+  for (let index = 1; index < 11; index++) {
+    await autoTimeSeries(index);
+  }
+});
+job.start();
 
 ee.data.authenticateViaPrivateKey(
     privateKey,
