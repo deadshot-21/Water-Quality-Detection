@@ -6,7 +6,9 @@ const wv_data = JSON.parse(wv);
 const { PythonShell } = require("python-shell");
 const fs = require("fs");
 const Location = require('../models/locationModel')
-
+const Token = require('../models/tokenModel')
+// const {admin} = require('../firebase.js');
+const admin = require("firebase-admin");
 // Define endpoint at /mapid.
 // const app = express().get('/mapid', (_, response) => {
 //   const srtm = ee.Image('CGIAR/SRTM90_V4');
@@ -1380,6 +1382,10 @@ const autoTimeSeries = async (index) => {
                     value: chl_arr[i]
                   })
                 }
+
+                if(chl[1].value < chl[2].value){
+                  await sendNotification('Chlorophyll rising alert!', `C value at ${loc.name} is expected to reach ${chl[2].value} by ${chl[2].date}`);
+                }
                 loc.chl = chl;
                 loc.updated_on = (new Date()).toLocaleString();
                 await loc.save();
@@ -1426,6 +1432,45 @@ const fetchGanga = async (req, res) => {
   
 }
 
+const addFCM = async (req,res) =>{
+  const tok = req.body.token;
+  const available = await Token.find({token: tok});  
+  if(available.length == 0) {
+    const newToken = new Token({token:tok});
+    await newToken.save();
+  }
+  res.json({
+    status: true,
+    message: "Token saved successfully",
+    errors: [],
+    data: {},
+  });
+}
+
+const sendNotification = async (title, body) =>{
+
+  const notification_options = {
+    priority: "high",
+    timeToLive: 60 * 60 * 24
+  };
+
+  const tokens = await Token.find({});
+  // console.log(tokens);
+  const arr = tokens.map(element => element.token);
+  // console.log(arr);
+
+  const message = {
+    // data: {score: '850', time: '2:45'},
+    tokens: arr,
+    notification: {title: title, body: body}
+  };
+
+  admin.messaging().sendMulticast(message)
+    .then((response) => {
+      console.log(response.successCount + ' messages were sent successfully');
+    });
+}
+
 module.exports = {
   index,
   mapid,
@@ -1435,5 +1480,7 @@ module.exports = {
   // extractDataLandsat,
   timeSeries,
   autoTimeSeries,
-  fetchGanga
+  fetchGanga,
+  addFCM,
+  sendNotification
 };

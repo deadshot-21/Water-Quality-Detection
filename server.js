@@ -8,6 +8,7 @@ const {autoTimeSeries}=require('./controllers/homeController')
 require("dotenv").config();
 const mongoose = require('mongoose')
 const Location = require('./models/locationModel')
+const admin = require('./firebase.js');
 
 const app=express()
 const port=process.env.PORT||3000
@@ -23,12 +24,15 @@ db.on("error", (err) => {
 db.once("open",() => {
     console.log("database connected");
 });
+// const {sendNotification} = require('./controllers/homeController')
+// console.log('Start');
+// sendNotification();
 
 app.use(express.json())
 app.use(express.urlencoded({extended: true}))
 
 app.use('/', homeRouter)
-const job = new CronJob("00 49 17 * * 6", async function jobYouNeedToExecute() {
+const job = new CronJob("00 00 12 * * 0", async function jobYouNeedToExecute() {
   // Do whatever you want in here. Send email, Make  database backup or download data.
   console.log(new Date().toLocaleString());
   for (let index = 1; index < 11; index++) {

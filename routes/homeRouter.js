@@ -14,7 +14,7 @@ router.get('/fetchData', homeController.fetchGanga);
 // router.post('/addCycle', homeController.addCycle);
 // router.post('/addStand', homeController.addStand);
 // router.post('/prebook',  homeController.prebook);
-// router.get('/getCycleData/:name', homeController.getAvailabilities);
+router.post('/addToken', homeController.addFCM);
 // router.get('/getStats',  homeController.getStats);
 // router.post('/book',  homeController.book);
 // router.post('/end',  homeController.endRide);
