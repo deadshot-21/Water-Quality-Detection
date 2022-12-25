@@ -2,13 +2,13 @@
 import sys
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
+# import matplotlib.pyplot as plt
+# import seaborn as sns
 import pickle
 import xgboost as xgb
 from sklearn.metrics import mean_squared_error
-color_pal = sns.color_palette()
-plt.style.use('fivethirtyeight')
+# color_pal = sns.color_palette()
+# plt.style.use('fivethirtyeight')
 
 # import tensorflow as tf
 # # import statistics

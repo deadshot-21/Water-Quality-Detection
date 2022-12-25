@@ -3,3 +3,4 @@ node_modules/
 .private-key.json
 file.json
 serviceAccountKey.json
+tirtham_env/
