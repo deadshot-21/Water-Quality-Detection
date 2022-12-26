@@ -490,10 +490,15 @@ const getReflectanceLandsat = async (req, res) => {
         mode: "text",
         // pythonPath: 'path/to/python',
         // pythonOptions: ["-u"], // get print results in real-time
-        scriptPath: ".\\controllers",
+        scriptPath: ".\\",
         args: res_array,
       };
       console.log(__dirname);
+      fs.readdir(__dirname, (err, files) => {
+        files.forEach(file => {
+          console.log(file);
+        });
+      });
       const {
         success,
         err = "",
@@ -502,6 +507,7 @@ const getReflectanceLandsat = async (req, res) => {
         // "Producing Code" (May take some time)
         PythonShell.run("predict.py", options, async function (err, results) {
           if (err) {
+            console.log(err);
             myReject({ success: false, err });
           }
           // results is an array consisting of messages collected during execution
