@@ -6,6 +6,7 @@ const wv_data = JSON.parse(wv);
 const { PythonShell } = require("python-shell");
 const fs = require("fs");
 const path = require("path");
+const os = require('os');
 const Location = require('../models/locationModel')
 const Token = require('../models/tokenModel')
 // const {admin} = require('../firebase.js');
@@ -491,10 +492,11 @@ const getReflectanceLandsat = async (req, res) => {
         mode: "text",
         // pythonPath: 'path/to/python',
         // pythonOptions: ["-u"], // get print results in real-time
-        scriptPath: path.join(__dirname,'controllers'),
+        // scriptPath: path.join(__dirname,'controllers'),
+        scriptPath: __dirname,
         args: res_array,
       };
-      console.log(path.join(__dirname,'controllers'));
+      console.log(os.type());
       // fs.readdir(__dirname, (err, files) => {
       //   files.forEach(file => {
       //     console.log(file);
