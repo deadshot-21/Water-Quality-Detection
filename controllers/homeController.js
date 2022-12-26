@@ -506,8 +506,8 @@ const getReflectanceLandsat = async (req, res) => {
           }
           // results is an array consisting of messages collected during execution
           // console.log(err);
-          // console.log('results');
-          // console.log(results);
+          console.log('results');
+          console.log(results);
           // console.log(results[2].substring(2, results[2].length-2));
           myResolve({
             success: true,
