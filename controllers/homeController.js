@@ -493,7 +493,7 @@ const getReflectanceLandsat = async (req, res) => {
         scriptPath: "./controllers",
         args: res_array,
       };
-      // console.log(options);
+      console.log(options);
       const {
         success,
         err = "",
