@@ -490,10 +490,10 @@ const getReflectanceLandsat = async (req, res) => {
         mode: "text",
         // pythonPath: 'path/to/python',
         // pythonOptions: ["-u"], // get print results in real-time
-        scriptPath: "./controllers",
+        scriptPath: ".\\controllers",
         args: res_array,
       };
-      console.log(options);
+      console.log(__dirname);
       const {
         success,
         err = "",
