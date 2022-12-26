@@ -509,11 +509,11 @@ const getReflectanceLandsat = async (req, res) => {
           console.log('results');
           console.log(results);
           // console.log(results[2].substring(2, results[2].length-2));
-          myResolve({
+          setTimeout(myResolve({
             success: true,
             results: results[results.length-1],
             
-          }); // when successful
+          }),10000); // when successful
         });
 
         // myReject();  // when error
