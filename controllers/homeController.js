@@ -7,6 +7,7 @@ const { PythonShell } = require("python-shell");
 const fs = require("fs");
 const path = require("path");
 const os = require('os');
+const { exec } = require("child_process");
 const Location = require('../models/locationModel')
 const Token = require('../models/tokenModel')
 // const {admin} = require('../firebase.js');
@@ -496,6 +497,18 @@ const getReflectanceLandsat = async (req, res) => {
         scriptPath: __dirname,
         args: res_array,
       };
+      
+      exec('python3 -c "import sys; print(sys.path)"', (error, stdout, stderr) => {
+          if (error) {
+              console.log(`error: ${error.message}`);
+              return;
+          }
+          if (stderr) {
+              console.log(`stderr: ${stderr}`);
+              return;
+          }
+          console.log(`stdout: ${stdout}`);
+      });
       console.log(os.type());
       // fs.readdir(__dirname, (err, files) => {
       //   files.forEach(file => {
