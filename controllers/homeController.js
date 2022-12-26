@@ -498,18 +498,18 @@ const getReflectanceLandsat = async (req, res) => {
         args: res_array,
       };
       
-      exec('python3 -c "import sys; print(sys.path)"', (error, stdout, stderr) => {
-          if (error) {
-              console.log(`error: ${error.message}`);
-              return;
-          }
-          if (stderr) {
-              console.log(`stderr: ${stderr}`);
-              return;
-          }
-          console.log(`stdout: ${stdout}`);
-      });
-      console.log(os.type());
+      // exec('python3 -c "import sys; print(sys.path)"', (error, stdout, stderr) => {
+      //     if (error) {
+      //         console.log(`error: ${error.message}`);
+      //         return;
+      //     }
+      //     if (stderr) {
+      //         console.log(`stderr: ${stderr}`);
+      //         return;
+      //     }
+      //     console.log(`stdout: ${stdout}`);
+      // });
+      // console.log(os.type());
       // fs.readdir(__dirname, (err, files) => {
       //   files.forEach(file => {
       //     console.log(file);
