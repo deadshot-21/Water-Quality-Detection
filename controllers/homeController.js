@@ -500,7 +500,7 @@ const getReflectanceLandsat = async (req, res) => {
         results,
       } = await new Promise(function (myResolve, myReject) {
         // "Producing Code" (May take some time)
-        PythonShell.run("predict.py", options, function (err, results) {
+        PythonShell.run("predict.py", options, async function (err, results) {
           if (err) {
             myReject({ success: false, err });
           }
@@ -509,11 +509,11 @@ const getReflectanceLandsat = async (req, res) => {
           console.log('results');
           console.log(results);
           // console.log(results[2].substring(2, results[2].length-2));
-          setTimeout(myResolve({
+          myResolve({
             success: true,
             results: results[results.length-1],
             
-          }),10000); // when successful
+          }); // when successful
         });
 
         // myReject();  // when error
