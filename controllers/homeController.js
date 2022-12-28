@@ -259,10 +259,16 @@ const index = async (req, res) => {
   });
 };
 var convert = function (o) {
-  if (o instanceof ee.ComputedObject) {
-    o = o.getInfo();
+  try {
+    if (o instanceof ee.ComputedObject) {
+      o = o.getInfo();
+      console.log(typeof(o));
+    }
+    return o;
+  } catch (error) {
+    return {}
   }
-  return o;
+  
 };
 
 const mapid = async (req, res) => {
@@ -281,6 +287,7 @@ const mapid = async (req, res) => {
 };
 
 const getReflectanceLandsat = async (req, res) => {
+  try {
   console.log(req.body.lat);
   console.log(req.body.long);
   function bufferPoints(radius, bounds) {
@@ -451,8 +458,10 @@ const getReflectanceLandsat = async (req, res) => {
   // Extract zonal statistics per point per image.
   var ptsLandsatStats = zonalStats(oliCol, ptsLandsat, params).then(
     async (result) => {
+      // console.log(result);
       // console.log(convert(result.limit(1)));
       var data1 = convert(result).features;
+      if(data1){
       var data1 = Array.from(data1);
 
       
@@ -581,8 +590,24 @@ const getReflectanceLandsat = async (req, res) => {
         });
       }
     }
+    else{
+      res.json({
+        status: false,
+        message: "No image found",
+        errors: ["No image found"],
+        data: {},
+      });
+    }
+  }
   );
-
+} catch (error) {
+  res.json({
+    status: false,
+    message: "Welcome to Tirtham",
+    errors: [err],
+    data: {},
+  });
+}
   //   Map.centerObject(geometry,20)
 };
 
@@ -823,6 +848,9 @@ const getReflectanceModis = async (req, res) => {
 };
 
 const timeSeries = async (req, res) => {
+  try {
+    
+  
   const today = new Date();
   const yyyy = today.getFullYear();
   let mm = today.getMonth() + 1; // Months start at 0!
@@ -1005,6 +1033,7 @@ const timeSeries = async (req, res) => {
     async (result) => {
       // console.log(convert(result).features);
       var data1 = convert(result).features;
+      if(data1){
       var data1 = Array.from(data1);
       // [
       //   bw(W) + bbp(W, bbp_B0, R443, R550),
@@ -1108,9 +1137,27 @@ const timeSeries = async (req, res) => {
           
         }
       }
-      
+    }else{
+      res.json({
+        status: false,
+        message: "No image found",
+        errors: ["No image found"],
+        data: {
+        },
+      });
     }
+    }
+    
   );
+} catch (error) {
+  res.json({
+    status: false,
+    message: "Welcome to Tirtham",
+    errors: [error],
+    data: {
+    },
+  });
+}
 }
 
 const autoTimeSeries = async (index) => {
