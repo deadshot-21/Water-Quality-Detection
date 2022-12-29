@@ -1045,7 +1045,15 @@ const timeSeries = async (req, res) => {
       //   bw(W),
       // ];
       console.log('for loop start');
-      const toSave = data1.map(element => element.properties);
+      const toSaveNonSplit = data1.map(element => element.properties);
+      let toSave = [];
+      for (let index = 0; index < toSaveNonSplit.length-1; index++) {
+        if(new Date(toSaveNonSplit[index]['date']) > new Date(toSaveNonSplit[index+1]['date'])) {
+          break;
+        } else {
+          toSave.push(toSaveNonSplit[index]);
+        }
+      }
       for (let index = 0; index < toSave.length; index++) {
         // const element = toSave[index];
         // let obj = element.properties;
@@ -1362,7 +1370,15 @@ const autoTimeSeries = async (index) => {
       //   bw(W),
       // ];
       console.log('for loop start');
-      const toSave = data1.map(element => element.properties);
+      const toSaveNonSplit = data1.map(element => element.properties);
+      let toSave = [];
+      for (let index = 0; index < toSaveNonSplit.length-1; index++) {
+        if(new Date(toSaveNonSplit[index]['date']) > new Date(toSaveNonSplit[index+1]['date'])) {
+          break;
+        } else {
+          toSave.push(toSaveNonSplit[index]);
+        }
+      }
       for (let index2 = 0; index2 < toSave.length; index2++) {
         // const element = toSave[index];
         // let obj = element.properties;

@@ -146,7 +146,8 @@ for x in list(future_w_features['pred']):
 
 
 # model accuracy ------------------
-df2 = df.loc[df.index < (datetime.now() - relativedelta(months=3)).strftime("%d-%m-%Y")].copy()
+# df2 = df.loc[df.index < (datetime.now() - relativedelta(months=3)).strftime("%d-%m-%Y")].copy()
+df2 = df.loc[df.index < (df.index.max() - relativedelta(months=3)).strftime("%Y-%m-%d")].copy()
 # print(df2.info())
 X_train2 = df2[FEATURES]
 y_train2 = df2[TARGET]
@@ -162,7 +163,8 @@ reg2.fit(X_train2, y_train2,
         eval_set=[(X_train2, y_train2)],
         verbose=0)
 
-df_last_month = df.loc[df.index >= (datetime.now() - relativedelta(months=3)).strftime("%d-%m-%Y")].copy()
+# df_last_month = df.loc[df.index >= (datetime.now() - relativedelta(months=3)).strftime("%d-%m-%Y")].copy()
+df_last_month = df.loc[df.index >= (df.index.max() - relativedelta(months=3)).strftime("%Y-%m-%d")].copy()
 # print(datetime.now() - relativedelta(months=1))
 # print((datetime.now() - relativedelta(months=1)).strftime("%d-%m-%Y"))
 df_last_month['pred'] = reg2.predict(df_last_month[FEATURES])
