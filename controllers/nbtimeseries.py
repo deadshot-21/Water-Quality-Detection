@@ -34,7 +34,7 @@ model_nb.fit([series_c], verbose=False)
 pred_c = model_nb.predict(n=10, series=series_c)
 pred_c_inv = scalar_c.inverse_transform(pred_c)
 
-print(list(pred_c_inv.pd_dataframe()['C']))
+# print(list(pred_c_inv.pd_dataframe()['C']))
 
 
 from datetime import datetime
@@ -112,6 +112,7 @@ pred_c_inv_last_month = scalar_c.inverse_transform(pred_c_last_month)
 # print(datetime.now() - relativedelta(months=1))
 # print((datetime.now() - relativedelta(months=1)).strftime("%d-%m-%Y"))
 # df_last_month['pred'] = reg2.predict(df_last_month[FEATURES])
+
 print()
 for x in list(pred_c_inv.pd_dataframe()['C']):
     print(x,end=" ")
@@ -127,3 +128,5 @@ for x in list(df_last_month['C']):
 
 print()
 print(df_last_month.index.min())
+print()
+print(pred_c_inv.pd_dataframe().index.max())

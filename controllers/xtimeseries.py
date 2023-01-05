@@ -107,6 +107,7 @@ from datetime import datetime
 from dateutil.relativedelta import relativedelta
 
 d = datetime.now().strftime("%Y-%m-%d")
+
 # print(df.index.max())
 d2 = datetime.now() + relativedelta(days=146)
 future = pd.date_range(d,d2, freq='16d')
@@ -177,6 +178,8 @@ for x in list(df_last_month['pred']):
 
 print()
 print(df_last_month.index.min())
+print()
+print(d)
 
 # old -----------------------
 # import numpy as np

@@ -1095,7 +1095,8 @@ const timeSeries = async (req, res) => {
                 results,
               } = await new Promise(function (myResolve, myReject) {
                 // "Producing Code" (May take some time)
-                PythonShell.run("xtimeseries.py", options, function (errr, results) {
+                console.log(req.body.model);
+                PythonShell.run(req.body.model == 1 ? "xtimeseries.py" : "nbtimeseries.py", options, function (errr, results) {
                   if (errr) {
                     console.log(errr);
                     myReject({ success: false, errr });
