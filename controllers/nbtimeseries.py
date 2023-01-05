@@ -30,7 +30,7 @@ scalar_c = Scaler()
 series_c = scalar_c.fit_transform(TimeSeries.from_series(df["C"],fill_missing_dates=True,freq="16d",fillna_value=df.mean()['C']) )
 # train_c, test_c = series_c[:100], series_c[100:]
 model_nb = NBEATSModel(input_chunk_length=7, output_chunk_length=1, n_epochs=10, random_state=21)
-model_nb.fit([series_c], verbose=False)
+model_nb.fit([series_c], verbose=0)
 pred_c = model_nb.predict(n=10, series=series_c)
 pred_c_inv = scalar_c.inverse_transform(pred_c)
 
@@ -91,7 +91,7 @@ df_last_month = df.loc[df.index >= (df.index.max() - relativedelta(months=3)).st
 series_c_last_month = scalar_c.fit_transform(TimeSeries.from_series(df2["C"],fill_missing_dates=True,freq="16d",fillna_value=df.mean()['C']) )
 # train_c, test_c = series_c[:100], series_c[100:]
 model_nb = NBEATSModel(input_chunk_length=7, output_chunk_length=1, n_epochs=10, random_state=21)
-model_nb.fit([series_c_last_month], verbose=True)
+model_nb.fit([series_c_last_month], verbose=0)
 pred_c_last_month = model_nb.predict(n=df_last_month.shape[0], series=series_c_last_month)
 pred_c_inv_last_month = scalar_c.inverse_transform(pred_c_last_month)
 

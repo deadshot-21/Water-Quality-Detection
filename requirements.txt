@@ -15,7 +15,6 @@ contourpy==1.0.6
 convertdate==2.4.0
 cycler==0.11.0
 Cython==0.29.32
-darts==0.23.0
 docutils==0.19
 ephem==4.1.4
 flatbuffers==22.12.6
@@ -95,6 +94,7 @@ torch==1.13.1
 torchmetrics==0.11.0
 tqdm==4.64.1
 typing_extensions==4.4.0
+u8darts==0.23.0
 urllib3==1.26.13
 Werkzeug==2.2.2
 wrapt==1.14.1
