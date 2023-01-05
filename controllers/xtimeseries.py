@@ -178,7 +178,6 @@ for x in list(df_last_month['pred']):
 
 print()
 print(df_last_month.index.min())
-print()
 print(d)
 
 # old -----------------------

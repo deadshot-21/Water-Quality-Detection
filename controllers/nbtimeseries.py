@@ -128,5 +128,4 @@ for x in list(df_last_month['C']):
 
 print()
 print(df_last_month.index.min())
-print()
-print(pred_c_inv.pd_dataframe().index.max())
+print(pred_c_inv.pd_dataframe().index.min())
